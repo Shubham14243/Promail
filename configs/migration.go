@@ -53,20 +53,14 @@ func Migrate() error {
 	CREATE TABLE IF NOT EXISTS templates (
     id BIGSERIAL PRIMARY KEY,
     app_id INT NOT NULL,
-
     name VARCHAR(100) NOT NULL,
     slug VARCHAR(100) NOT NULL,
-
     subject TEXT NOT NULL,
-
     type VARCHAR(10) NOT NULL
         CHECK (type IN ('html', 'text')),
-
     status VARCHAR(10) NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'inactive')),
-
     content TEXT NOT NULL,
-
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -74,9 +68,29 @@ func Migrate() error {
         FOREIGN KEY (app_id)
         REFERENCES apps(id)
         ON DELETE CASCADE,
-
     CONSTRAINT uq_template_slug
         UNIQUE (app_id, slug)
+	);
+
+	CREATE TABLE IF NOT EXISTS app_configs (
+		id SERIAL PRIMARY KEY,
+		app_id INT NOT NULL UNIQUE,
+		host VARCHAR(100) NOT NULL,
+		port INT NOT NULL DEFAULT 587,
+		username VARCHAR(100) NOT NULL,
+		password TEXT NOT NULL,
+		open_track VARCHAR(10) NOT NULL DEFAULT 'active'
+        	CHECK (open_track IN ('active', 'inactive')),
+		click_track VARCHAR(10) NOT NULL DEFAULT 'active'
+        	CHECK (click_track IN ('active', 'inactive')),
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		CONSTRAINT fk_smtp_app
+			FOREIGN KEY (app_id)
+			REFERENCES apps(id)
+			ON DELETE CASCADE,
+		CONSTRAINT uq_config_app
+        	UNIQUE (app_id, id)
 	);
 	`
 

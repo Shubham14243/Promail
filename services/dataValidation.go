@@ -219,3 +219,66 @@ func ValidateTemplateContent(req models.TemplateContent) error {
 
 	return nil
 }
+
+// APP CONFIG VALIDATION
+func ValidateAppConfigCreate(req models.AppConfigCreate) error {
+
+	if req.AppID <= 0 {
+		return errors.New("Invalid app_id: must be a positive integer.")
+	}
+
+	if req.SMTPHost == "" {
+		return errors.New("Invalid smtp_host: cannot be empty.")
+	}
+
+	if req.SMTPPort <= 0 || req.SMTPPort > 65535 {
+		return errors.New("Invalid smtp_port: must be a positive integer between 1 and 65535.")
+	}
+
+	if !IsValidEmail(req.SMTPUsername) {
+		return errors.New("Invalid smtp_username: must be a valid email address.")
+	}
+
+	if req.SMTPPassword == "" {
+		return errors.New("Invalid smtp_password: cannot be empty.")
+	}
+
+	if req.OpenTrack != "active" && req.OpenTrack != "inactive" {
+		return errors.New("Invalid open_track: must be either 'active' or 'inactive'.")
+	}
+
+	if req.ClickTrack != "active" && req.ClickTrack != "inactive" {
+		return errors.New("Invalid click_track: must be either 'active' or 'inactive'.")
+	}
+
+	return nil
+}
+
+func ValidateAppConfigUpdate(req models.AppConfigUpdate) error {
+
+	if req.SMTPHost == "" {
+		return errors.New("Invalid smtp_host: cannot be empty.")
+	}
+
+	if req.SMTPPort <= 0 || req.SMTPPort > 65535 {
+		return errors.New("Invalid smtp_port: must be a positive integer between 1 and 65535.")
+	}
+
+	if !IsValidEmail(req.SMTPUsername) {
+		return errors.New("Invalid smtp_username: must be a valid email address.")
+	}
+
+	if req.SMTPPassword == "" {
+		return errors.New("Invalid smtp_password: cannot be empty.")
+	}
+
+	if req.OpenTrack != "active" && req.OpenTrack != "inactive" {
+		return errors.New("Invalid open_track: must be either 'active' or 'inactive'.")
+	}
+
+	if req.ClickTrack != "active" && req.ClickTrack != "inactive" {
+		return errors.New("Invalid click_track: must be either 'active' or 'inactive'.")
+	}
+
+	return nil
+}

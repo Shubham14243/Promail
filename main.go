@@ -67,6 +67,9 @@ func main() {
 	tempRepo := &repositories.TemplateRepository{
 		DB: configs.DB,
 	}
+	appConfigRepo := &repositories.AppConfigRepository{
+		DB: configs.DB,
+	}
 
 	UserHandler := &handlers.UserHandler{
 		Repo: userRepo,
@@ -81,8 +84,11 @@ func main() {
 	TemplateHandler := &handlers.TemplateHandler{
 		TempRepo: tempRepo,
 	}
+	AppConfigHandler := &handlers.AppConfigHandler{
+		AppConfigRepo: appConfigRepo,
+	}
 
-	mux := routes.RegisterRoutes(UserHandler, AuthHandler, AppHandler, TemplateHandler)
+	mux := routes.RegisterRoutes(UserHandler, AuthHandler, AppHandler, TemplateHandler, AppConfigHandler)
 
 	mux.HandleFunc("GET /ping", pingHandler)
 	mux.HandleFunc("GET /health", healthHandler)

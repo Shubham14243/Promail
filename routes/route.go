@@ -5,7 +5,7 @@ import (
 	"promail/handlers"
 )
 
-func RegisterRoutes(uh *handlers.UserHandler, ah *handlers.AuthHandler, aph *handlers.AppHandler, th *handlers.TemplateHandler) *http.ServeMux {
+func RegisterRoutes(uh *handlers.UserHandler, ah *handlers.AuthHandler, aph *handlers.AppHandler, th *handlers.TemplateHandler, acf *handlers.AppConfigHandler) *http.ServeMux {
 
 	mux := http.NewServeMux()
 
@@ -13,6 +13,7 @@ func RegisterRoutes(uh *handlers.UserHandler, ah *handlers.AuthHandler, aph *han
 	UserRoutes(mux, uh)
 	AppRoutes(mux, aph)
 	TemplateRoutes(mux, th)
+	AppConfigRoutes(mux, acf)
 
 	return mux
 }
