@@ -70,6 +70,9 @@ func main() {
 	appConfigRepo := &repositories.AppConfigRepository{
 		DB: configs.DB,
 	}
+	emailRepo := &repositories.EmailRepository{
+		DB: configs.DB,
+	}
 
 	UserHandler := &handlers.UserHandler{
 		Repo: userRepo,
@@ -87,8 +90,12 @@ func main() {
 	AppConfigHandler := &handlers.AppConfigHandler{
 		AppConfigRepo: appConfigRepo,
 	}
+	EmailHandler := &handlers.EmailHandler{
+		EmailRepo:     emailRepo,
+		AppConfigRepo: appConfigRepo,
+	}
 
-	mux := routes.RegisterRoutes(UserHandler, AuthHandler, AppHandler, TemplateHandler, AppConfigHandler)
+	mux := routes.RegisterRoutes(UserHandler, AuthHandler, AppHandler, TemplateHandler, AppConfigHandler, EmailHandler)
 
 	mux.HandleFunc("GET /ping", pingHandler)
 	mux.HandleFunc("GET /health", healthHandler)

@@ -41,7 +41,7 @@ func (h *AppHandler) CreateApp(w http.ResponseWriter, r *http.Request) {
 		logdata.ResponseCode = http.StatusBadRequest
 		logdata.Error = err.Error()
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'name', 'description', 'sender_name' and 'sender_email' required.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'name' and 'description' required.", logdata.RequestID)
 		return
 	}
 
@@ -80,8 +80,6 @@ func (h *AppHandler) CreateApp(w http.ResponseWriter, r *http.Request) {
 		UserId:      userID,
 		Name:        req.Name,
 		Description: req.Description,
-		SenderName:  req.SenderName,
-		SenderEmail: req.SenderEmail,
 		MailKey:     uuid.New(),
 		Status:      "active",
 	}
@@ -290,7 +288,7 @@ func (h *AppHandler) UpdateApp(w http.ResponseWriter, r *http.Request) {
 		logdata.ResponseCode = http.StatusBadRequest
 		logdata.Error = err.Error()
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'name', 'description', 'sender_name' and 'sender_email' required.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'name', 'description' and 'status' required.", logdata.RequestID)
 		return
 	}
 
@@ -328,8 +326,7 @@ func (h *AppHandler) UpdateApp(w http.ResponseWriter, r *http.Request) {
 		UserId:      userID,
 		Name:        req.Name,
 		Description: req.Description,
-		SenderName:  req.SenderName,
-		SenderEmail: req.SenderEmail,
+		Status:      req.Status,
 	}
 
 	if err := h.AppRepo.UpdateApp(int64(appID), app); err != nil {
@@ -406,79 +403,6 @@ func (h *AppHandler) UpdateKey(w http.ResponseWriter, r *http.Request) {
 	logdata.Error = ""
 	logger.Info(logdata)
 	services.ResponseWithMessage(w, http.StatusOK, nil, "App key updated successfully.", logdata.RequestID)
-}
-
-func (h *AppHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
-
-	userID := r.Context().Value(middlewares.UserIDKey).(int64)
-	idStr := r.PathValue("appID")
-	appID, _ := strconv.Atoi(idStr)
-	appStatus := r.PathValue("status")
-
-	logdata := models.LogData{
-		RequestID:  r.Context().Value(middlewares.RequestIDKey).(string),
-		Endpoint:   r.RequestURI,
-		Method:     r.Method,
-		Operation:  "Update Status",
-		Status:     "Init",
-		UserID:     strconv.FormatInt(userID, 10),
-		Message:    "App status update initiated.",
-		ResourceID: strconv.Itoa(appID),
-	}
-	logger.Info(logdata)
-
-	exists, err := h.AppRepo.AppExistsByID(int64(appID), userID)
-	if !exists {
-		logdata.Message = "App not found."
-		logdata.Status = "Failure"
-		logdata.ResponseCode = http.StatusNotFound
-		logdata.Error = ""
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusNotFound, nil, "App not found.", logdata.RequestID)
-		return
-	}
-	if err != nil {
-		logdata.Message = "App existence check failed."
-		logdata.Status = "Error"
-		logdata.ResponseCode = http.StatusInternalServerError
-		logdata.Error = err.Error()
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
-		return
-	}
-
-	mailKey := uuid.New()
-
-	if appStatus == "active" {
-		mailKey = uuid.New()
-	} else if appStatus == "inactive" {
-		mailKey = uuid.Nil
-	} else {
-		logdata.Message = "Invalid status value."
-		logdata.Status = "Failure"
-		logdata.ResponseCode = http.StatusBadRequest
-		logdata.Error = "Status must be either 'active' or 'inactive'."
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid status value. Status must be either 'active' or 'inactive'.", logdata.RequestID)
-		return
-	}
-
-	if err := h.AppRepo.UpdateAppStatus(int64(appID), userID, appStatus, mailKey); err != nil {
-		logdata.Message = "App status update failed"
-		logdata.Status = "Error"
-		logdata.ResponseCode = http.StatusInternalServerError
-		logdata.Error = err.Error()
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
-		return
-	}
-
-	logdata.Message = "App status update successful."
-	logdata.Status = "Success"
-	logdata.ResponseCode = http.StatusOK
-	logdata.Error = ""
-	logger.Info(logdata)
-	services.ResponseWithMessage(w, http.StatusOK, nil, "App status updated successfully.", logdata.RequestID)
 }
 
 func (h *AppHandler) DeleteApp(w http.ResponseWriter, r *http.Request) {

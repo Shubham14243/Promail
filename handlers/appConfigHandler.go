@@ -39,7 +39,7 @@ func (h *AppConfigHandler) CreateAppConfig(w http.ResponseWriter, r *http.Reques
 		logdata.ResponseCode = http.StatusBadRequest
 		logdata.Error = err.Error()
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'app_id', 'smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'open_track', 'click_track' required.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'app_id', 'smtp_host', 'smtp_port', 'smtp_name', 'smtp_username', 'smtp_password', 'open_track', 'click_track', 'auto_retry', 'retry_max_count' required.", logdata.RequestID)
 		return
 	}
 
@@ -86,13 +86,16 @@ func (h *AppConfigHandler) CreateAppConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	appConfig := models.AppConfigCreate{
-		AppID:        req.AppID,
-		SMTPHost:     req.SMTPHost,
-		SMTPPort:     req.SMTPPort,
-		SMTPUsername: req.SMTPUsername,
-		SMTPPassword: encryptedPassword,
-		OpenTrack:    req.OpenTrack,
-		ClickTrack:   req.ClickTrack,
+		AppID:         req.AppID,
+		SMTPHost:      req.SMTPHost,
+		SMTPPort:      req.SMTPPort,
+		SMTPName:      req.SMTPName,
+		SMTPUsername:  req.SMTPUsername,
+		SMTPPassword:  encryptedPassword,
+		OpenTrack:     req.OpenTrack,
+		ClickTrack:    req.ClickTrack,
+		AutoRetry:     req.AutoRetry,
+		RetryMaxCount: req.RetryMaxCount,
 	}
 
 	if err := h.AppConfigRepo.CreateAppConfig(appConfig); err != nil {
@@ -199,7 +202,7 @@ func (h *AppConfigHandler) UpdateAppConfig(w http.ResponseWriter, r *http.Reques
 		logdata.ResponseCode = http.StatusBadRequest
 		logdata.Error = err.Error()
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'open_track', 'click_track' required.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'smtp_host', 'smtp_port', 'smtp_name', 'smtp_username', 'smtp_password', 'open_track', 'click_track', 'auto_retry', 'retry_max_count' required.", logdata.RequestID)
 		return
 	}
 
@@ -245,13 +248,16 @@ func (h *AppConfigHandler) UpdateAppConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	appConfig := models.AppConfigUpdate{
-		ID:           req.ID,
-		SMTPHost:     req.SMTPHost,
-		SMTPPort:     req.SMTPPort,
-		SMTPUsername: req.SMTPUsername,
-		SMTPPassword: encryptedPassword,
-		OpenTrack:    req.OpenTrack,
-		ClickTrack:   req.ClickTrack,
+		ID:            req.ID,
+		SMTPHost:      req.SMTPHost,
+		SMTPPort:      req.SMTPPort,
+		SMTPName:      req.SMTPName,
+		SMTPUsername:  req.SMTPUsername,
+		SMTPPassword:  encryptedPassword,
+		OpenTrack:     req.OpenTrack,
+		ClickTrack:    req.ClickTrack,
+		AutoRetry:     req.AutoRetry,
+		RetryMaxCount: req.RetryMaxCount,
 	}
 
 	if err := h.AppConfigRepo.UpdateAppConfig(int64(appID), appConfig); err != nil {

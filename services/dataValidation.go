@@ -132,15 +132,6 @@ func ValidateAppCreate(req models.CreateApp) error {
 	if !IsValidAppName(req.Name) {
 		return errors.New("Invalid app name: 5-50 chars, starting with letter, letters, number, spaces and characters['.','_','-','/'] only.")
 	}
-
-	if !IsValidName(req.SenderName) {
-		return errors.New("Invalid sender name: 2-50 chars, letters and spaces only.")
-	}
-
-	if !IsValidEmail(req.SenderEmail) {
-		return errors.New("Invalid email.")
-	}
-
 	return nil
 }
 
@@ -150,12 +141,8 @@ func ValidateAppUpdate(req models.UpdateApp) error {
 		return errors.New("Invalid app name: 5-50 chars, starting with letter, letters, number, spaces and characters['.','_','-','/'] only.")
 	}
 
-	if !IsValidName(req.SenderName) {
-		return errors.New("Invalid sender name: 2-50 chars, letters and spaces only.")
-	}
-
-	if !IsValidEmail(req.SenderEmail) {
-		return errors.New("Invalid email.")
+	if !IsValidName(req.Status) {
+		return errors.New("Invalid status: must be either 'active' or 'inactive'.")
 	}
 
 	return nil
@@ -235,6 +222,10 @@ func ValidateAppConfigCreate(req models.AppConfigCreate) error {
 		return errors.New("Invalid smtp_port: must be a positive integer between 1 and 65535.")
 	}
 
+	if !IsValidName(req.SMTPName) {
+		return errors.New("Invalid smtp_name: must be a valid name.")
+	}
+
 	if !IsValidEmail(req.SMTPUsername) {
 		return errors.New("Invalid smtp_username: must be a valid email address.")
 	}
@@ -249,6 +240,14 @@ func ValidateAppConfigCreate(req models.AppConfigCreate) error {
 
 	if req.ClickTrack != "active" && req.ClickTrack != "inactive" {
 		return errors.New("Invalid click_track: must be either 'active' or 'inactive'.")
+	}
+
+	if req.AutoRetry != "active" && req.AutoRetry != "inactive" {
+		return errors.New("Invalid auto_retry: must be either 'active' or 'inactive'.")
+	}
+
+	if req.RetryMaxCount < 0 {
+		return errors.New("Invalid retry_max_count: must be a non-negative integer.")
 	}
 
 	return nil
@@ -264,6 +263,10 @@ func ValidateAppConfigUpdate(req models.AppConfigUpdate) error {
 		return errors.New("Invalid smtp_port: must be a positive integer between 1 and 65535.")
 	}
 
+	if !IsValidName(req.SMTPName) {
+		return errors.New("Invalid smtp_name: must be a valid name.")
+	}
+
 	if !IsValidEmail(req.SMTPUsername) {
 		return errors.New("Invalid smtp_username: must be a valid email address.")
 	}
@@ -278,6 +281,25 @@ func ValidateAppConfigUpdate(req models.AppConfigUpdate) error {
 
 	if req.ClickTrack != "active" && req.ClickTrack != "inactive" {
 		return errors.New("Invalid click_track: must be either 'active' or 'inactive'.")
+	}
+
+	if req.AutoRetry != "active" && req.AutoRetry != "inactive" {
+		return errors.New("Invalid auto_retry: must be either 'active' or 'inactive'.")
+	}
+
+	if req.RetryMaxCount < 0 {
+		return errors.New("Invalid retry_max_count: must be a non-negative integer.")
+	}
+
+	return nil
+}
+
+// Send EMAIL Validation
+
+func validateEmailData(receiver string) error {
+
+	if !IsValidEmail(receiver) {
+		return errors.New("Invalid receiver email.")
 	}
 
 	return nil

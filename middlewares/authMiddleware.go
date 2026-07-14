@@ -23,8 +23,8 @@ func Auth(next http.Handler) http.Handler {
 			RequestID: r.Context().Value(RequestIDKey).(string),
 			Endpoint:  r.RequestURI,
 			Method:    r.Method,
-			Operation: "User GetUser Single",
-			Status:    "Authorization Init",
+			Operation: "User Authorization",
+			Status:    "Init",
 			UserID:    "",
 			Message:   "Authorization started.",
 		}

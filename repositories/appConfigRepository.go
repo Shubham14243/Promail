@@ -61,17 +61,20 @@ func (r *AppConfigRepository) GetAppConfigs(appID int64, userID int64) (*models.
 			c.app_id,
 			c.host,
 			c.port,
+			c.name,
 			c.username,
 			c.password,
 			c.open_track,
 			c.click_track,
+			c.auto_retry,
+			c.retry_max_count,
 			c.created_at,
 			c.updated_at
 		FROM app_configs c
 		JOIN apps a ON a.id = c.app_id
 		WHERE a.id = $1
 		  AND a.user_id = $2`,
-		appID, userID).Scan(&appConfig.ID, &appConfig.AppID, &appConfig.SMTPHost, &appConfig.SMTPPort, &appConfig.SMTPUsername, &appConfig.SMTPPassword, &appConfig.OpenTrack, &appConfig.ClickTrack, &appConfig.CreatedAt, &appConfig.UpdatedAt)
+		appID, userID).Scan(&appConfig.ID, &appConfig.AppID, &appConfig.SMTPHost, &appConfig.SMTPPort, &appConfig.SMTPName, &appConfig.SMTPUsername, &appConfig.SMTPPassword, &appConfig.OpenTrack, &appConfig.ClickTrack, &appConfig.AutoRetry, &appConfig.RetryMaxCount, &appConfig.CreatedAt, &appConfig.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -82,14 +85,14 @@ func (r *AppConfigRepository) GetAppConfigs(appID int64, userID int64) (*models.
 
 func (r *AppConfigRepository) CreateAppConfig(config models.AppConfigCreate) error {
 
-	_, err := r.DB.Exec(`INSERT INTO app_configs(app_id, host, port, username, password, open_track, click_track) VALUES($1, $2, $3, $4, $5, $6, $7)`, config.AppID, config.SMTPHost, config.SMTPPort, config.SMTPUsername, config.SMTPPassword, config.OpenTrack, config.ClickTrack)
+	_, err := r.DB.Exec(`INSERT INTO app_configs(app_id, host, port, name, username, password, open_track, click_track, auto_retry, retry_max_count) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`, config.AppID, config.SMTPHost, config.SMTPPort, config.SMTPName, config.SMTPUsername, config.SMTPPassword, config.OpenTrack, config.ClickTrack, config.AutoRetry, config.RetryMaxCount)
 
 	return err
 }
 
 func (r *AppConfigRepository) UpdateAppConfig(configID int64, config models.AppConfigUpdate) error {
 
-	_, err := r.DB.Exec(`UPDATE app_configs SET host=$1, port=$2, username=$3, password=$4, open_track=$5, click_track=$6 WHERE id=$7`, config.SMTPHost, config.SMTPPort, config.SMTPUsername, config.SMTPPassword, config.OpenTrack, config.ClickTrack, configID)
+	_, err := r.DB.Exec(`UPDATE app_configs SET host=$1, port=$2, name=$3, username=$4, password=$5, open_track=$6, click_track=$7, auto_retry=$8, retry_max_count=$9 WHERE id=$10`, config.SMTPHost, config.SMTPPort, config.SMTPName, config.SMTPUsername, config.SMTPPassword, config.OpenTrack, config.ClickTrack, config.AutoRetry, config.RetryMaxCount, configID)
 
 	return err
 }
