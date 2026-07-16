@@ -105,6 +105,7 @@ func Migrate() error {
 		to_email VARCHAR(100) NOT NULL,
 		subject TEXT NOT NULL,
 		variable_data TEXT NOT NULL,
+		rendered_body TEXT NOT NULL DEFAULT '',
 		status VARCHAR(20) NOT NULL DEFAULT 'queued'
 			CHECK (status IN ('queued', 'processing', 'sent', 'opened', 'failed')),
 		error_message TEXT,
@@ -120,8 +121,7 @@ func Migrate() error {
 	CREATE TABLE IF NOT EXISTS email_queue (
 		id BIGSERIAL PRIMARY KEY,
 		email_log_id BIGINT NOT NULL UNIQUE,
-		attempts INT NOT NULL DEFAULT 1,
-		max_attempts INT NOT NULL DEFAULT 3,
+		attempts INT NOT NULL DEFAULT 0,
 		last_attempted_at TIMESTAMPTZ,
 		CONSTRAINT fk_queue_email
 			FOREIGN KEY (email_log_id) REFERENCES email_logs(id) ON DELETE CASCADE

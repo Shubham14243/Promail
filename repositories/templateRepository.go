@@ -110,6 +110,27 @@ func (r *TemplateRepository) GetAppTemplateSingle(templateID int64, userID int64
 	return &template, nil
 }
 
+func (r *TemplateRepository) GetAppTemplateBySlug(slug string, userID int64) (*models.TemplateData, error) {
+
+	var template models.TemplateData
+
+	err := r.DB.QueryRow(`
+        SELECT t.id, t.name, t.slug, t.subject, t.type, t.content, t.status, t.created_at, t.updated_at
+        FROM templates t
+		JOIN apps a ON a.id = t.app_id
+		WHERE
+			t.slug = $1
+			AND a.user_id = $2
+	`,
+		slug, userID).Scan(&template.ID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &template.Status, &template.CreatedAt, &template.UpdatedAt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &template, nil
+}
+
 func (r *TemplateRepository) CreateTemplate(template models.TemplateCreate) error {
 
 	_, err := r.DB.Exec(`INSERT INTO templates(app_id, name, slug, subject, type, content) values($1, $2, $3, $4, $5, $6)`, template.AppID, template.Name, template.Slug, template.Subject, template.Type, template.Content)

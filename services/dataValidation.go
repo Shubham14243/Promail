@@ -50,15 +50,6 @@ var (
 	numberRegex = regexp.MustCompile(`[0-9]`)
 )
 
-// SLUG Validation
-var slugRegex = regexp.MustCompile(
-	`^[a-z0-9]+(?:-[a-z0-9]+)*$`,
-)
-
-func IsValidSlug(slug string) bool {
-	return slugRegex.MatchString(slug)
-}
-
 func IsValidPassword(password string) bool {
 
 	if len(password) < 8 || len(password) > 25 {
@@ -78,6 +69,15 @@ func IsValidPassword(password string) bool {
 	}
 
 	return true
+}
+
+// SLUG Validation
+var slugRegex = regexp.MustCompile(
+	`^[a-z0-9]+(?:-[a-z0-9]+)*$`,
+)
+
+func IsValidSlug(slug string) bool {
+	return slugRegex.MatchString(slug)
 }
 
 // SIGNUP VALIDATION
@@ -296,9 +296,30 @@ func ValidateAppConfigUpdate(req models.AppConfigUpdate) error {
 
 // Send EMAIL Validation
 
-func validateEmailData(receiver string) error {
+func ValidateEmailTestData(req models.EmailSendTest) error {
 
-	if !IsValidEmail(receiver) {
+	if !IsValidEmail(req.To) {
+		return errors.New("Invalid receiver email.")
+	}
+
+	if !IsValidSubject(req.Subject) {
+		return errors.New("Invalid email subject: must be 5-100 chars, letters, numbers and spaces only.")
+	}
+
+	return nil
+}
+
+func ValidateEmailData(req models.EmailSend) error {
+
+	if req.AppID <= 0 {
+		return errors.New("Invalid AppID.")
+	}
+
+	if !IsValidSlug(req.TemplateSlug) {
+		return errors.New("Invalid template slug: 5-50 chars, lowercase letters, numbers and hyphens only.")
+	}
+
+	if !IsValidEmail(req.To) {
 		return errors.New("Invalid receiver email.")
 	}
 

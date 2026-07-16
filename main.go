@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"promail/middlewares"
 	"promail/repositories"
 	"promail/routes"
+	"promail/services"
 )
 
 func pingHandler(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +57,12 @@ func main() {
 	}
 	logger.Init()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	emailWorker := services.NewWorker(configs.DB)
+	go emailWorker.Run(ctx)
+
 	userRepo := &repositories.UserRepository{
 		DB: configs.DB,
 	}
@@ -93,6 +101,8 @@ func main() {
 	EmailHandler := &handlers.EmailHandler{
 		EmailRepo:     emailRepo,
 		AppConfigRepo: appConfigRepo,
+		AppRepo:       appRepo,
+		TempRepo:      tempRepo,
 	}
 
 	mux := routes.RegisterRoutes(UserHandler, AuthHandler, AppHandler, TemplateHandler, AppConfigHandler, EmailHandler)
