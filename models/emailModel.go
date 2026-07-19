@@ -38,20 +38,21 @@ type LogResponse struct {
 }
 
 type EmailLogData struct {
-	ID           int64     `json:"id"`
-	LogUUID      uuid.UUID `json:"uuid"`
-	UserID       int64     `json:"user_id"`
-	AppID        int64     `json:"app_id"`
-	TemplateID   *int64    `json:"template_id"`
-	ToEmail      string    `json:"to_email"`
-	Subject      string    `json:"subject"`
-	Variables    *string   `json:"variables"`
-	Body         string    `json:"body"`
-	Status       string    `json:"status"`
-	ErrorMessage *string   `json:"error_message"`
-	SentAt       *string   `json:"sentAt"`
-	CreatedAt    string    `json:"created_at"`
-	UpdatedAt    string    `json:"updated_at"`
+	ID           int64          `json:"id"`
+	LogUUID      uuid.UUID      `json:"uuid"`
+	UserID       int64          `json:"user_id"`
+	AppID        int64          `json:"app_id"`
+	TemplateID   *int64         `json:"template_id"`
+	ToEmail      string         `json:"to_email"`
+	Subject      string         `json:"subject"`
+	Variables    *string        `json:"variables"`
+	Body         string         `json:"body"`
+	Status       string         `json:"status"`
+	ErrorMessage *string        `json:"error_message"`
+	SentAt       *string        `json:"sentAt"`
+	CreatedAt    string         `json:"created_at"`
+	UpdatedAt    string         `json:"updated_at"`
+	Tracking     []TrackingData `json:"tracking"`
 }
 
 type TrackingData struct {
@@ -62,4 +63,17 @@ type TrackingData struct {
 	TrackingToken string  `json:"trackingtoken"`
 	OpenedAt      *string `json:"opened_at"`
 	ClickedAt     *string `json:"clicked_at"`
+}
+
+type EmailLogFilter struct {
+	AppID         *int64
+	TemplateID    *int64
+	ToEmail       string
+	StartDateTime string
+	EndDateTime   string
+}
+
+type ClickTracking struct {
+	Token       uuid.UUID
+	OriginalURL string
 }

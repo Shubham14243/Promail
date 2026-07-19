@@ -1,11 +1,15 @@
 package services
 
 import (
+	"fmt"
 	"net/smtp"
 	"os"
 	"promail/models"
+	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 func SendEmail(appConf *models.AppConfigData, to string, subject string, body string, emailType string) error {
@@ -51,4 +55,37 @@ func AddOpenTracking(body string, openUUID string, tempType string) string {
 	}
 
 	return body
+}
+
+func AddClickTracking(body string) (string, []models.ClickTracking) {
+	baseURL := os.Getenv("APP_BASE_URL")
+
+	re := regexp.MustCompile(`(?i)href\s*=\s*("([^"]*)"|'([^']*)')`)
+
+	var trackings []models.ClickTracking
+
+	updated := re.ReplaceAllStringFunc(body, func(match string) string {
+		sub := re.FindStringSubmatch(match)
+
+		var originalURL string
+		if sub[2] != "" {
+			originalURL = sub[2]
+		} else {
+			originalURL = sub[3]
+		}
+
+		token := uuid.New()
+
+		trackings = append(trackings, models.ClickTracking{
+			Token:       token,
+			OriginalURL: originalURL,
+		})
+
+		return fmt.Sprintf(`href="%s/api/v1/email/track/click/%s"`,
+			baseURL,
+			token.String(),
+		)
+	})
+
+	return updated, trackings
 }

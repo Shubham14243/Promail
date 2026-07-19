@@ -29,7 +29,7 @@ func (h *EmailHandler) SendEmailTest(w http.ResponseWriter, r *http.Request) {
 		RequestID: r.Context().Value(middlewares.RequestIDKey).(string),
 		Endpoint:  r.RequestURI,
 		Method:    r.Method,
-		Operation: "Email Send Test Request",
+		Operation: "Email Send Test Request.",
 		Status:    "Init",
 		UserID:    strconv.FormatInt(userID, 10),
 		Message:   "Email sending initiated.",
@@ -115,7 +115,7 @@ func (h *EmailHandler) SendEmailTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := services.SendEmail(appConf, req.To, req.Subject, req.Body, "html"); err != nil {
-		logdata.Message = "Email sending test failure"
+		logdata.Message = "Email sending test failure."
 		logdata.Status = "Error"
 		logdata.ResponseCode = http.StatusInternalServerError
 		logdata.Error = err.Error()
@@ -229,7 +229,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 
 	template, err := h.TempRepo.GetAppTemplateBySlug(req.TemplateSlug, int64(userID))
 	if err != nil {
-		logdata.Message = "Template fetch failure"
+		logdata.Message = "Template fetch failure."
 		logdata.Status = "Error"
 		logdata.ResponseCode = http.StatusInternalServerError
 		logdata.Error = err.Error()
@@ -253,6 +253,12 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	logUUID := uuid.New()
 
 	email_body := services.PrepareEmailBody(template.Content, req.Variables)
+
+	var trackings []models.ClickTracking
+
+	if appConf.ClickTrack == "active" {
+		email_body, trackings = services.AddClickTracking(email_body)
+	}
 
 	if appConf.OpenTrack == "active" {
 		email_body = services.AddOpenTracking(email_body, logUUID.String(), template.Type)
@@ -283,12 +289,25 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 
 	if appConf.OpenTrack == "active" {
 		if err := h.EmailRepo.AddOpenTracking(logRes); err != nil {
-			logdata.Message = "Open tracking data insertion failed"
+			logdata.Message = "Open tracking data insertion failed."
 			logdata.Status = "Failure"
 			logdata.ResponseCode = http.StatusBadRequest
 			logdata.Error = err.Error()
 			logger.Error(logdata)
 			services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Open tracking data insertion failed.", logdata.RequestID)
+			return
+		}
+	}
+
+	if appConf.ClickTrack == "active" {
+		err = h.EmailRepo.AddClickTracking(logRes.LogID, trackings)
+		if err != nil {
+			logdata.Message = "Click tracking creation failed."
+			logdata.Status = "Error"
+			logdata.ResponseCode = http.StatusInternalServerError
+			logdata.Error = err.Error()
+			logger.Error(logdata)
+			services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
 			return
 		}
 	}
@@ -317,9 +336,9 @@ func (h *EmailHandler) OpenTrack(w http.ResponseWriter, r *http.Request) {
 	}
 	logger.Info(logdata)
 
-	trackData, err := h.EmailRepo.GetOpenWithUUID(tokenStr)
+	trackData, err := h.EmailRepo.GetAnalyticsWithUUID(tokenStr)
 	if err != nil {
-		logdata.Message = "LogData fetch failure"
+		logdata.Message = "LogData fetch failure."
 		logdata.Status = "Error"
 		logdata.ResponseCode = http.StatusInternalServerError
 		logdata.Error = err.Error()
@@ -340,7 +359,7 @@ func (h *EmailHandler) OpenTrack(w http.ResponseWriter, r *http.Request) {
 
 	if trackData.OpenedAt == nil {
 		if err := h.EmailRepo.UpdateOpenTracking(trackData.EmailLogID); err != nil {
-			logdata.Message = "Open tracking data updation failed"
+			logdata.Message = "Open tracking data updation failed."
 			logdata.Status = "Failure"
 			logdata.ResponseCode = http.StatusBadRequest
 			logdata.Error = err.Error()
@@ -356,4 +375,168 @@ func (h *EmailHandler) OpenTrack(w http.ResponseWriter, r *http.Request) {
 	logdata.Error = ""
 	logger.Info(logdata)
 	services.ResponseWithMessage(w, http.StatusOK, nil, "Open Track Successful.", logdata.RequestID)
+}
+
+func (h *EmailHandler) ClickTrack(w http.ResponseWriter, r *http.Request) {
+	tokenStr := r.PathValue("token")
+
+	logdata := models.LogData{
+		RequestID:  r.Context().Value(middlewares.RequestIDKey).(string),
+		Endpoint:   r.RequestURI,
+		Method:     r.Method,
+		Operation:  "Open Tracking",
+		Status:     "Init",
+		UserID:     "",
+		Message:    "Email open tracking initiated.",
+		ResourceID: tokenStr,
+	}
+	logger.Info(logdata)
+
+	trackData, err := h.EmailRepo.GetAnalyticsWithUUID(tokenStr)
+	if err != nil {
+		logdata.Message = "LogData fetch failure."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
+	if trackData == nil {
+		logdata.Message = "Click tracking record not found."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = ""
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Click tracking record not found.", logdata.RequestID)
+		return
+	}
+
+	if trackData.ClickedAt == nil {
+		if err := h.EmailRepo.UpdateClickTracking(trackData.EmailLogID, tokenStr); err != nil {
+			logdata.Message = "Click tracking data updation failed."
+			logdata.Status = "Failure"
+			logdata.ResponseCode = http.StatusBadRequest
+			logdata.Error = err.Error()
+			logger.Error(logdata)
+			services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Click tracking data updation failed.", logdata.RequestID)
+			return
+		}
+	}
+
+	logdata.Message = "Click Track Successful."
+	logdata.Status = "Success"
+	logdata.ResponseCode = http.StatusOK
+	logdata.Error = ""
+	logger.Info(logdata)
+	services.ResponseWithMessage(w, http.StatusOK, nil, "Click Track Successful.", logdata.RequestID)
+}
+
+func (h *EmailHandler) EmailLogUUID(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(middlewares.UserIDKey).(int64)
+	uuidStr := r.PathValue("uuid")
+
+	logdata := models.LogData{
+		RequestID:  r.Context().Value(middlewares.RequestIDKey).(string),
+		Endpoint:   r.RequestURI,
+		Method:     r.Method,
+		Operation:  "Email Log Fetch",
+		Status:     "Init",
+		UserID:     strconv.FormatInt(userID, 10),
+		Message:    "Email log fetching initiated.",
+		ResourceID: uuidStr,
+	}
+	logger.Info(logdata)
+
+	emailLog, err := h.EmailRepo.GetLogWithUUID(uuidStr)
+	if err != nil {
+		logdata.Message = "Email log fetch failure."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
+	if emailLog == nil {
+		logdata.Message = "Email Log record not found."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = ""
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Email Log record not found.", logdata.RequestID)
+		return
+	}
+
+	logdata.Message = "Email log fetch Successful."
+	logdata.Status = "Success"
+	logdata.ResponseCode = http.StatusOK
+	logdata.Error = ""
+	logger.Info(logdata)
+	services.ResponseWithData(w, http.StatusOK, nil, "Email log fetch Successful.", emailLog, logdata.RequestID)
+}
+
+func (h *EmailHandler) EmailLogAll(w http.ResponseWriter, r *http.Request) {
+
+	userID := r.Context().Value(middlewares.UserIDKey).(int64)
+
+	logdata := models.LogData{
+		RequestID:  r.Context().Value(middlewares.RequestIDKey).(string),
+		Endpoint:   r.RequestURI,
+		Method:     r.Method,
+		Operation:  "Email Log Fetch",
+		Status:     "Init",
+		UserID:     strconv.FormatInt(userID, 10),
+		Message:    "Email log fetching initiated.",
+		ResourceID: "",
+	}
+	logger.Info(logdata)
+
+	query := r.URL.Query()
+
+	var filter models.EmailLogFilter
+
+	if appID := query.Get("app_id"); appID != "" {
+		id, _ := strconv.ParseInt(appID, 10, 64)
+		filter.AppID = &id
+	}
+
+	if templateID := query.Get("template_id"); templateID != "" {
+		id, _ := strconv.ParseInt(templateID, 10, 64)
+		filter.TemplateID = &id
+	}
+
+	filter.ToEmail = query.Get("to_email")
+	filter.StartDateTime = query.Get("startDateTime")
+	filter.EndDateTime = query.Get("endDateTime")
+
+	emailLogs, err := h.EmailRepo.GetEmailLogs(userID, filter)
+	if err != nil {
+		logdata.Message = "Email log fetch failure."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
+	if emailLogs == nil {
+		logdata.Message = "Email Log record not found."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = ""
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Email Log record not found.", logdata.RequestID)
+		return
+	}
+
+	logdata.Message = "Email log fetch Successful."
+	logdata.Status = "Success"
+	logdata.ResponseCode = http.StatusOK
+	logdata.Error = ""
+	logger.Info(logdata)
+	services.ResponseWithData(w, http.StatusOK, nil, "Email log fetch Successful.", emailLogs, logdata.RequestID)
 }
