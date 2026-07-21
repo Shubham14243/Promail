@@ -51,10 +51,15 @@ func main() {
 	http.HandleFunc("/health", healthHandler)
 
 	configs.LoadEnv()
+	log.Println("Connecting DB...")
 	configs.ConnectDB()
+	log.Println("DB Connected")
+
+	log.Println("Running migrations...")
 	if err := configs.Migrate(); err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Migration completed")
 	logger.Init()
 
 	ctx, cancel := context.WithCancel(context.Background())
