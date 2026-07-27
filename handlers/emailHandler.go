@@ -425,12 +425,12 @@ func (h *EmailHandler) ClickTrack(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logdata.Message = "Click Track Successful."
+	logdata.Message = "Click Track Successful. Redirecting..."
 	logdata.Status = "Success"
-	logdata.ResponseCode = http.StatusOK
+	logdata.ResponseCode = http.StatusPermanentRedirect
 	logdata.Error = ""
 	logger.Info(logdata)
-	services.ResponseWithMessage(w, http.StatusOK, nil, "Click Track Successful.", logdata.RequestID)
+	services.Redirect(w, http.StatusPermanentRedirect, nil, *trackData.Url, r)
 }
 
 func (h *EmailHandler) EmailLogUUID(w http.ResponseWriter, r *http.Request) {

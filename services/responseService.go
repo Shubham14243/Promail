@@ -44,3 +44,10 @@ func ResponseWithData(w http.ResponseWriter, statusCode int, headers map[string]
 		Data:    data,
 	})
 }
+
+func Redirect(w http.ResponseWriter, statusCode int, headers map[string]string, url string, r *http.Request) {
+	for k, v := range headers {
+		w.Header().Set(k, v)
+	}
+	http.Redirect(w, r, url, statusCode)
+}
