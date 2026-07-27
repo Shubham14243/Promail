@@ -44,6 +44,8 @@ func (w *Worker) Run(ctx context.Context) {
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
+	log.Printf("Worker started running.")
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -180,10 +182,13 @@ func (w *Worker) claimBatch(ctx context.Context) ([]EmailJob, error) {
 		}
 	}
 
+	log.Printf("Batch picked.")
+
 	return jobs, tx.Commit()
 }
 
 func (w *Worker) processJob(ctx context.Context, job EmailJob) {
+	log.Printf("Send email initiated.")
 	err := SendEmail(&job.Conf, job.ToEmail, job.Subject, job.Body, job.Type)
 	if err != nil {
 		w.handleFailure(ctx, job, err)
