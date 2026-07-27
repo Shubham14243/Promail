@@ -114,7 +114,7 @@ func (h *EmailHandler) SendEmailTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := services.SendEmail(appConf, req.To, req.Subject, req.Body, "html"); err != nil {
+	if err := services.SendEmail(appConf, req.To, req.Subject, req.Body, "html", ""); err != nil {
 		logdata.Message = "Email sending test failure."
 		logdata.Status = "Error"
 		logdata.ResponseCode = http.StatusInternalServerError

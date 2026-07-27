@@ -20,6 +20,7 @@ type EmailJob struct {
 	EmailLogID int64
 	Attempts   int
 
+	UUID    string
 	ToEmail string
 	Subject string
 	Body    string
@@ -95,7 +96,7 @@ func (w *Worker) claimBatch(ctx context.Context) ([]EmailJob, error) {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT
 			eq.id, eq.email_log_id, eq.attempts,
-			el.to_email, el.subject, el.rendered_body,
+			el.to_email, el.subject, el.rendered_body, el.uuid,
 			t.type,
 			ac.host, ac.port, ac.username, ac.password, ac.name,
 			ac.auto_retry, ac.retry_max_count,
@@ -129,7 +130,7 @@ func (w *Worker) claimBatch(ctx context.Context) ([]EmailJob, error) {
 
 		if err := rows.Scan(
 			&j.QueueID, &j.EmailLogID, &j.Attempts,
-			&j.ToEmail, &j.Subject, &j.Body,
+			&j.ToEmail, &j.Subject, &j.Body, &j.UUID,
 			&tType,
 			&j.Conf.SMTPHost, &j.Conf.SMTPPort, &j.Conf.SMTPUsername, &j.Conf.SMTPPassword, &confName,
 			&j.AutoRetry, &j.RetryMaxCount,
@@ -189,7 +190,7 @@ func (w *Worker) claimBatch(ctx context.Context) ([]EmailJob, error) {
 
 func (w *Worker) processJob(ctx context.Context, job EmailJob) {
 	log.Printf("Send email initiated.")
-	err := SendEmail(&job.Conf, job.ToEmail, job.Subject, job.Body, job.Type)
+	err := SendEmail(&job.Conf, job.ToEmail, job.Subject, job.Body, job.Type, job.UUID)
 	if err != nil {
 		w.handleFailure(ctx, job, err)
 		return

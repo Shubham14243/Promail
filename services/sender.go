@@ -1,35 +1,96 @@
 package services
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"net/smtp"
+	"net/http"
 	"os"
 	"promail/models"
 	"regexp"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
 
-func SendEmail(appConf *models.AppConfigData, to string, subject string, body string, emailType string) error {
+func SendEmail(appConf *models.AppConfigData, to string, subject string, body string, emailType string, idemKey string) error {
 
-	auth := smtp.PlainAuth("", appConf.SMTPUsername, appConf.SMTPPassword, appConf.SMTPHost)
-
-	emailBody := ""
-	emailBody += "From: " + appConf.SMTPName + " <" + appConf.SMTPUsername + ">\r\n"
-	emailBody += "To: " + to + "\r\n"
-	emailBody += "Subject: " + subject + "\r\n"
-	emailBody += "MIME-Version: 1.0\r\n"
-	emailBody += "Content-Type: text/html; charset=UTF-8\r\n"
-	emailBody += "\r\n"
-	emailBody += body
-
-	err := smtp.SendMail(appConf.SMTPHost+":"+strconv.Itoa(appConf.SMTPPort), auth, appConf.SMTPUsername, []string{to}, []byte(emailBody))
-	if err != nil {
-		return err
+	relayURL := os.Getenv("RELAY_URL")
+	if relayURL == "" {
+		relayURL = "http://127.0.0.1:8090/relay"
 	}
-	return nil
+	apiKey := os.Getenv("RELAY_API_KEY")
+	if apiKey == "" {
+		return fmt.Errorf("RELAY_API_KEY is not configured")
+	}
+
+	payload := map[string]any{
+		"host":     appConf.SMTPHost,
+		"port":     appConf.SMTPPort,
+		"username": appConf.SMTPUsername,
+		"password": appConf.SMTPPassword,
+		"from":     appConf.SMTPName,
+		"to":       to,
+		"subject":  subject,
+		"body":     body,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal relay payload: %w", err)
+	}
+
+	encrypted, err := Encrypt(string(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("failed to encrypt relay payload: %w", err)
+	}
+
+	wrapped := map[string]string{"payload": encrypted}
+	wrappedBytes, err := json.Marshal(wrapped)
+	if err != nil {
+		return fmt.Errorf("failed to marshal wrapped payload: %w", err)
+	}
+
+	if idemKey == "" {
+		idemKey = uuid.NewString()
+	}
+	req, err := http.NewRequest(http.MethodPost, relayURL, bytes.NewReader(wrappedBytes))
+	if err != nil {
+		return fmt.Errorf("failed to build relay request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", apiKey)
+	req.Header.Set("X-Idempotency-Key", idemKey)
+
+	client := &http.Client{Timeout: 25 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("relay request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+
+	var relayErr struct {
+		Error  string         `json:"error"`
+		Result map[string]any `json:"result"`
+	}
+	if decErr := json.NewDecoder(resp.Body).Decode(&relayErr); decErr != nil {
+		return fmt.Errorf("relay returned status %d", resp.StatusCode)
+	}
+	if relayErr.Result != nil {
+		if msg, ok := relayErr.Result["message"].(string); ok && msg != "" {
+			return fmt.Errorf("relay status %d: %s", resp.StatusCode, msg)
+		}
+	}
+	if relayErr.Error != "" {
+		return fmt.Errorf("relay status %d: %s", resp.StatusCode, relayErr.Error)
+	}
+	return fmt.Errorf("relay returned status %d", resp.StatusCode)
 }
 
 func PrepareEmailBody(body string, variables map[string]string) string {
