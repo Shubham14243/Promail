@@ -77,6 +77,9 @@ func (r *AppConfigRepository) GetAppConfigs(appID int64, userID int64) (*models.
 		appID, userID).Scan(&appConfig.ID, &appConfig.AppID, &appConfig.SMTPHost, &appConfig.SMTPPort, &appConfig.SMTPName, &appConfig.SMTPUsername, &appConfig.SMTPPassword, &appConfig.OpenTrack, &appConfig.ClickTrack, &appConfig.AutoRetry, &appConfig.RetryMaxCount, &appConfig.CreatedAt, &appConfig.UpdatedAt)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 

@@ -56,6 +56,9 @@ func (r *AppRepository) GetUserApps(userID int64, limit int, offset int) ([]mode
 		userID, limit, offset,
 	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -79,6 +82,9 @@ func (r *AppRepository) GetUserAppSingle(appID int64, userID int64) (*models.App
 	err := r.DB.QueryRow(
 		`SELECT id, name, description, status, created_at, updated_at FROM apps WHERE id=$1 AND user_id=$2`, appID, userID).Scan(&app.ID, &app.Name, &app.Description, &app.Status, &app.CreatedAt, &app.UpdatedAt)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -91,6 +97,9 @@ func (r *AppRepository) GetUserAppKey(appID int64, userID int64) (*models.AppMai
 
 	err := r.DB.QueryRow(`SELECT id, mail_key from apps where id=$1 AND user_id=$2`, appID, userID).Scan(&app.ID, &app.MailKey)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 

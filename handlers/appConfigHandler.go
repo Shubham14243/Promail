@@ -110,7 +110,7 @@ func (h *AppConfigHandler) CreateAppConfig(w http.ResponseWriter, r *http.Reques
 
 	logdata.Message = "App config creation successful."
 	logdata.Status = "Success"
-	logdata.ResponseCode = http.StatusOK
+	logdata.ResponseCode = http.StatusCreated
 	logdata.Error = ""
 	logger.Info(logdata)
 	services.ResponseWithMessage(w, http.StatusCreated, nil, "App config created successfully.", logdata.RequestID)

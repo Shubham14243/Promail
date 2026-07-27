@@ -13,6 +13,9 @@ func (r *UserRepository) GetAllUsers() ([]models.User, error) {
 
 	rows, err := r.DB.Query(`SELECT id, uuid, name, email, created_at, updated_at FROM users`)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -38,6 +41,9 @@ func (r *UserRepository) GetUserByID(id int64) (*models.User, error) {
 
 	err := r.DB.QueryRow(`SELECT id, uuid, name, email, created_at, updated_at FROM users where id=$1`, id).Scan(&user.ID, &user.UUID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -51,6 +57,9 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 
 	err := r.DB.QueryRow(`SELECT id, email, password_hash FROM users where email=$1`, email).Scan(&user.ID, &user.Email, &user.PasswordHash)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 

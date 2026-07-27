@@ -257,11 +257,11 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	var trackings []models.ClickTracking
 
 	if appConf.ClickTrack == "active" {
-		email_body, trackings = services.AddClickTracking(email_body)
+		email_body, trackings = services.AddClickTrackingBody(email_body)
 	}
 
 	if appConf.OpenTrack == "active" {
-		email_body = services.AddOpenTracking(email_body, logUUID.String(), template.Type)
+		email_body = services.AddOpenTrackingBody(email_body, logUUID.String(), template.Type)
 	}
 
 	emailLog := models.EmailLogDataCreate{

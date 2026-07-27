@@ -96,7 +96,7 @@ func (h *AppHandler) CreateApp(w http.ResponseWriter, r *http.Request) {
 
 	logdata.Message = "App creation successful."
 	logdata.Status = "Success"
-	logdata.ResponseCode = http.StatusOK
+	logdata.ResponseCode = http.StatusCreated
 	logdata.Error = ""
 	logger.Info(logdata)
 	services.ResponseWithMessage(w, http.StatusCreated, nil, "App created successfully.", logdata.RequestID)

@@ -96,7 +96,7 @@ func (h *TemplateHandler) CreateTemplate(w http.ResponseWriter, r *http.Request)
 
 	logdata.Message = "Template creation successful."
 	logdata.Status = "Success"
-	logdata.ResponseCode = http.StatusOK
+	logdata.ResponseCode = http.StatusCreated
 	logdata.Error = ""
 	logger.Info(logdata)
 	services.ResponseWithMessage(w, http.StatusCreated, nil, "Template created successfully.", logdata.RequestID)

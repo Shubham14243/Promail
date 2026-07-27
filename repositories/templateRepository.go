@@ -73,6 +73,9 @@ func (r *TemplateRepository) GetAppTemplates(appID int64, userID int64, limit in
 		appID, userID, limit, offset,
 	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -104,6 +107,9 @@ func (r *TemplateRepository) GetAppTemplateSingle(templateID int64, userID int64
 		templateID, userID).Scan(&template.ID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &template.Status, &template.CreatedAt, &template.UpdatedAt)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -125,6 +131,9 @@ func (r *TemplateRepository) GetAppTemplateBySlug(slug string, userID int64) (*m
 		slug, userID).Scan(&template.ID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &template.Status, &template.CreatedAt, &template.UpdatedAt)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 

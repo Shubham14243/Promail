@@ -42,7 +42,7 @@ func PrepareEmailBody(body string, variables map[string]string) string {
 	return body
 }
 
-func AddOpenTracking(body string, openUUID string, tempType string) string {
+func AddOpenTrackingBody(body string, openUUID string, tempType string) string {
 
 	baseUrl := os.Getenv("APP_BASE_URL")
 	openStr := "<img src='" + baseUrl + "/api/v1/email/track/open/" + openUUID + "'/>"
@@ -57,7 +57,7 @@ func AddOpenTracking(body string, openUUID string, tempType string) string {
 	return body
 }
 
-func AddClickTracking(body string) (string, []models.ClickTracking) {
+func AddClickTrackingBody(body string) (string, []models.ClickTracking) {
 	baseURL := os.Getenv("APP_BASE_URL")
 
 	re := regexp.MustCompile(`(?i)href\s*=\s*("([^"]*)"|'([^']*)')`)

@@ -108,7 +108,7 @@ func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 
 	logdata.Message = "User creation successful."
 	logdata.Status = "Success"
-	logdata.ResponseCode = http.StatusOK
+	logdata.ResponseCode = http.StatusCreated
 	logdata.Error = ""
 	logger.Info(logdata)
 	services.ResponseWithMessage(w, http.StatusCreated, nil, "User created successfully.", logdata.RequestID)
@@ -154,7 +154,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logdata.Message = "No User found with - " + req.Email
 		logdata.Status = "Failure"
-		logdata.ResponseCode = http.StatusBadRequest
+		logdata.ResponseCode = http.StatusNotFound
 		logdata.Error = err.Error()
 		logger.Error(logdata)
 		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email or passowrd.", logdata.RequestID)
@@ -268,7 +268,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		logdata.ResponseCode = http.StatusBadRequest
 		logdata.Error = "Refresh token empty."
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "refresh_token is required.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Refresh_token is required.", logdata.RequestID)
 		return
 	}
 
@@ -279,7 +279,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		logdata.ResponseCode = http.StatusUnauthorized
 		logdata.Error = err.Error()
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "invalid or expired refresh token", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "Invalid or expired refresh token.", logdata.RequestID)
 		return
 	}
 
