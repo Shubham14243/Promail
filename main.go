@@ -124,7 +124,7 @@ func main() {
 
 	log.Println("Starting server on", addr)
 
-	routeHandler := middlewares.RequestID(mux)
+	routeHandler := middlewares.CORS(middlewares.RequestID(mux))
 
 	err := http.ListenAndServe(addr, routeHandler)
 	if err != nil {

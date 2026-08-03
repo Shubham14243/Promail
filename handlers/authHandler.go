@@ -149,13 +149,32 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.UserRepo.GetUserByEmail(req.Email)
+	if h.UserRepo == nil {
+		logdata.Message = "User repository unavailable"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = "user repository is nil"
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
 
+	user, err := h.UserRepo.GetUserByEmail(req.Email)
 	if err != nil {
 		logdata.Message = "No User found with - " + req.Email
 		logdata.Status = "Failure"
 		logdata.ResponseCode = http.StatusNotFound
 		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email or passowrd.", logdata.RequestID)
+		return
+	}
+
+	if user == nil {
+		logdata.Message = "No User found with - " + req.Email
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = "user not found"
 		logger.Error(logdata)
 		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email or passowrd.", logdata.RequestID)
 		return
@@ -197,6 +216,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if userData == nil {
+		logdata.Message = "User data fetch failure"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = "user data is nil"
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
 	validityDays, err := strconv.Atoi(os.Getenv("REFRESH_TOKEN_VALIDITY_DAYS"))
 	if err != nil {
 		validityDays = 3
@@ -206,6 +235,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		UserID:    userData.ID,
 		Token:     refreshToken,
 		ExpiresAt: time.Now().Add(time.Duration(validityDays) * 24 * time.Hour),
+	}
+
+	if h.RefreshTokenRepo == nil {
+		logdata.Message = "Refresh token repository unavailable"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = "refresh token repository is nil"
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
 	}
 
 	if err := h.RefreshTokenRepo.CreateRefreshToken(refToken); err != nil {
