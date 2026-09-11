@@ -35,7 +35,7 @@ func IsValidAppName(appName string) bool {
 
 // SUBJECT Validation
 var subjectRegex = regexp.MustCompile(
-	`^[a-zA-Z][a-zA-Z0-9 ._/-|]{4,99}$`,
+	`^[a-zA-Z][a-zA-Z0-9 ._/-|!]{4,99}$`,
 )
 
 func IsValidSubject(subject string) bool {
@@ -159,7 +159,7 @@ func ValidateTemplateCreate(req models.TemplateCreate) error {
 	}
 
 	if !IsValidSubject(req.Subject) {
-		return errors.New("Invalid template subject: 5-100 chars, letters, numbers and spaces only.")
+		return errors.New("Invalid template subject: 5-100 chars, letters, numbers and spaces and characters ['.','_','-','/','|'] only.")
 	}
 
 	if req.Type != "html" && req.Type != "text" {
@@ -269,10 +269,6 @@ func ValidateAppConfigUpdate(req models.AppConfigUpdate) error {
 
 	if !IsValidEmail(req.SMTPUsername) {
 		return errors.New("Invalid smtp_username: must be a valid email address.")
-	}
-
-	if req.SMTPPassword == "" {
-		return errors.New("Invalid smtp_password: cannot be empty.")
 	}
 
 	if req.OpenTrack != "active" && req.OpenTrack != "inactive" {

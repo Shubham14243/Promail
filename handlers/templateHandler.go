@@ -75,13 +75,17 @@ func (h *TemplateHandler) CreateTemplate(w http.ResponseWriter, r *http.Request)
 	}
 
 	template := models.TemplateCreate{
-		AppID:   req.AppID,
-		Name:    req.Name,
-		Slug:    req.Slug,
-		Subject: req.Subject,
-		Type:    req.Type,
-		Content: req.Content,
-		Status:  "active",
+		AppID:     req.AppID,
+		Name:      req.Name,
+		Slug:      req.Slug,
+		Subject:   req.Subject,
+		Type:      req.Type,
+		Content:   req.Content,
+		Variables: req.Variables,
+		Status:    "active",
+	}
+	if template.Variables == nil {
+		template.Variables = map[string]string{}
 	}
 
 	if err := h.TempRepo.CreateTemplate(template); err != nil {
@@ -274,10 +278,11 @@ func (h *TemplateHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request)
 	}
 
 	template := models.TemplateUpdate{
-		Name:    req.Name,
-		Slug:    req.Slug,
-		Subject: req.Subject,
-		Status:  req.Status,
+		Name:      req.Name,
+		Slug:      req.Slug,
+		Subject:   req.Subject,
+		Variables: req.Variables,
+		Status:    req.Status,
 	}
 
 	if err := h.TempRepo.UpdateTemplate(int64(templateID), template); err != nil {
@@ -288,6 +293,18 @@ func (h *TemplateHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request)
 		logger.Info(logdata)
 		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
 		return
+	}
+
+	if req.Variables != nil {
+		if err := h.TempRepo.UpdateTemplateVariables(int64(templateID), req.Variables); err != nil {
+			logdata.Message = "Template variables update failed"
+			logdata.Status = "Error"
+			logdata.ResponseCode = http.StatusInternalServerError
+			logdata.Error = err.Error()
+			logger.Info(logdata)
+			services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+			return
+		}
 	}
 
 	logdata.Message = "Template Updation successful."
@@ -324,7 +341,7 @@ func (h *TemplateHandler) UpdateContent(w http.ResponseWriter, r *http.Request) 
 		logdata.ResponseCode = http.StatusBadRequest
 		logdata.Error = err.Error()
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'type' and 'content' required.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'type', 'content' and 'variables' required.", logdata.RequestID)
 		return
 	}
 
@@ -359,8 +376,12 @@ func (h *TemplateHandler) UpdateContent(w http.ResponseWriter, r *http.Request) 
 	}
 
 	templateContent := models.TemplateContent{
-		Type:    req.Type,
-		Content: req.Content,
+		Type:      req.Type,
+		Content:   req.Content,
+		Variables: req.Variables,
+	}
+	if templateContent.Variables == nil {
+		templateContent.Variables = map[string]string{}
 	}
 
 	if err := h.TempRepo.UpdateTemplateContent(int64(templateID), templateContent); err != nil {

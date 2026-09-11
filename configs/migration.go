@@ -60,6 +60,7 @@ func Migrate() error {
 		status VARCHAR(10) NOT NULL DEFAULT 'active'
 			CHECK (status IN ('active', 'inactive')),
 		content TEXT NOT NULL,
+		variables JSONB NOT NULL DEFAULT '{}'::jsonb,
 		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -70,6 +71,9 @@ func Migrate() error {
 		CONSTRAINT uq_template_slug
 			UNIQUE (app_id, slug)
 		);
+
+	ALTER TABLE templates
+		ADD COLUMN IF NOT EXISTS variables JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 	CREATE TABLE IF NOT EXISTS app_configs (
 		id SERIAL PRIMARY KEY,

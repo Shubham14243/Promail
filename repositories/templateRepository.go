@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"database/sql"
+	"encoding/json"
 	"promail/models"
 )
 
@@ -61,6 +62,7 @@ func (r *TemplateRepository) GetAppTemplates(appID int64, userID int64, limit in
 			t.subject,
 			t.type,
 			t.content,
+			t.variables,
 			t.status,
 			t.created_at,
 			t.updated_at
@@ -85,7 +87,13 @@ func (r *TemplateRepository) GetAppTemplates(appID int64, userID int64, limit in
 
 	for rows.Next() {
 		var template models.TemplateData
-		rows.Scan(&template.ID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &template.Status, &template.CreatedAt, &template.UpdatedAt)
+		var variables []byte
+		if err := rows.Scan(&template.ID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &variables, &template.Status, &template.CreatedAt, &template.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(variables, &template.Variables); err != nil {
+			return nil, err
+		}
 		templates = append(templates, template)
 	}
 
@@ -95,21 +103,25 @@ func (r *TemplateRepository) GetAppTemplates(appID int64, userID int64, limit in
 func (r *TemplateRepository) GetAppTemplateSingle(templateID int64, userID int64) (*models.TemplateData, error) {
 
 	var template models.TemplateData
+	var variables []byte
 
 	err := r.DB.QueryRow(`
-        SELECT t.id, t.name, t.slug, t.subject, t.type, t.content, t.status, t.created_at, t.updated_at
+		SELECT t.id, t.app_id, t.name, t.slug, t.subject, t.type, t.content, t.variables, t.status, t.created_at, t.updated_at
         FROM templates t
 		JOIN apps a ON a.id = t.app_id
 		WHERE
 			t.id = $1
 			AND a.user_id = $2
 	`,
-		templateID, userID).Scan(&template.ID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &template.Status, &template.CreatedAt, &template.UpdatedAt)
+		templateID, userID).Scan(&template.ID, &template.AppID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &variables, &template.Status, &template.CreatedAt, &template.UpdatedAt)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+		return nil, err
+	}
+	if err := json.Unmarshal(variables, &template.Variables); err != nil {
 		return nil, err
 	}
 
@@ -119,21 +131,25 @@ func (r *TemplateRepository) GetAppTemplateSingle(templateID int64, userID int64
 func (r *TemplateRepository) GetAppTemplateBySlug(slug string, userID int64) (*models.TemplateData, error) {
 
 	var template models.TemplateData
+	var variables []byte
 
 	err := r.DB.QueryRow(`
-        SELECT t.id, t.name, t.slug, t.subject, t.type, t.content, t.status, t.created_at, t.updated_at
+        SELECT t.id, t.name, t.slug, t.subject, t.type, t.content, t.variables, t.status, t.created_at, t.updated_at
         FROM templates t
 		JOIN apps a ON a.id = t.app_id
 		WHERE
 			t.slug = $1
 			AND a.user_id = $2
 	`,
-		slug, userID).Scan(&template.ID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &template.Status, &template.CreatedAt, &template.UpdatedAt)
+		slug, userID).Scan(&template.ID, &template.Name, &template.Slug, &template.Subject, &template.Type, &template.Content, &variables, &template.Status, &template.CreatedAt, &template.UpdatedAt)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+		return nil, err
+	}
+	if err := json.Unmarshal(variables, &template.Variables); err != nil {
 		return nil, err
 	}
 
@@ -142,7 +158,12 @@ func (r *TemplateRepository) GetAppTemplateBySlug(slug string, userID int64) (*m
 
 func (r *TemplateRepository) CreateTemplate(template models.TemplateCreate) error {
 
-	_, err := r.DB.Exec(`INSERT INTO templates(app_id, name, slug, subject, type, content) values($1, $2, $3, $4, $5, $6)`, template.AppID, template.Name, template.Slug, template.Subject, template.Type, template.Content)
+	variables, err := json.Marshal(template.Variables)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.DB.Exec(`INSERT INTO templates(app_id, name, slug, subject, type, content, variables) values($1, $2, $3, $4, $5, $6, $7)`, template.AppID, template.Name, template.Slug, template.Subject, template.Type, template.Content, string(variables))
 
 	return err
 }
@@ -154,9 +175,26 @@ func (r *TemplateRepository) UpdateTemplate(templateID int64, template models.Te
 	return err
 }
 
+func (r *TemplateRepository) UpdateTemplateVariables(templateID int64, variables map[string]string) error {
+
+	variableData, err := json.Marshal(variables)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.DB.Exec(`UPDATE templates SET variables=$1 WHERE id=$2`, string(variableData), templateID)
+
+	return err
+}
+
 func (r *TemplateRepository) UpdateTemplateContent(templateID int64, templateContent models.TemplateContent) error {
 
-	_, err := r.DB.Exec(`UPDATE templates SET type=$1, content=$2 WHERE id=$3`, templateContent.Type, templateContent.Content, templateID)
+	variables, err := json.Marshal(templateContent.Variables)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.DB.Exec(`UPDATE templates SET type=$1, content=$2, variables=$3 WHERE id=$4`, templateContent.Type, templateContent.Content, string(variables), templateID)
 
 	return err
 }

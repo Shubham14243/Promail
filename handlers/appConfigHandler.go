@@ -236,15 +236,18 @@ func (h *AppConfigHandler) UpdateAppConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	encryptedPassword, err := services.Encrypt(req.SMTPPassword)
-	if err != nil {
-		logdata.Message = "Password encryption failure"
-		logdata.Status = "Error"
-		logdata.ResponseCode = http.StatusInternalServerError
-		logdata.Error = err.Error()
-		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
-		return
+	encryptedPassword := ""
+	if req.SMTPPassword != "" {
+		encryptedPassword, err = services.Encrypt(req.SMTPPassword)
+		if err != nil {
+			logdata.Message = "Password encryption failure"
+			logdata.Status = "Error"
+			logdata.ResponseCode = http.StatusInternalServerError
+			logdata.Error = err.Error()
+			logger.Error(logdata)
+			services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+			return
+		}
 	}
 
 	appConfig := models.AppConfigUpdate{
