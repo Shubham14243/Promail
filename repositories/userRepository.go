@@ -9,32 +9,6 @@ type UserRepository struct {
 	DB *sql.DB
 }
 
-func (r *UserRepository) GetAllUsers() ([]models.User, error) {
-
-	rows, err := r.DB.Query(`SELECT id, uuid, name, email, created_at, updated_at FROM users`)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	var users []models.User
-
-	for rows.Next() {
-
-		var user models.User
-
-		rows.Scan(&user.ID, &user.UUID, &user.Name, &user.Email, &user.CreatedAt, &user.UpdatedAt)
-		users = append(users, user)
-	}
-
-	return users, nil
-
-}
-
 func (r *UserRepository) GetUserByID(id int64) (*models.User, error) {
 
 	var user models.User

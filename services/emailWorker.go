@@ -3,8 +3,11 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
+
+	"github.com/lib/pq"
 
 	"promail/models" // wherever AppConfigData / SendEmail / PrepareEmailBody live
 )
@@ -30,7 +33,8 @@ type EmailJob struct {
 	AutoRetry     string
 	RetryMaxCount int
 
-	Conf models.AppConfigData
+	Conf       models.AppConfigData
+	DecryptErr error
 }
 
 type Worker struct {
@@ -107,7 +111,11 @@ func (w *Worker) claimBatch(ctx context.Context) ([]EmailJob, error) {
 		JOIN app_configs ac  ON ac.app_id = a.id
 		LEFT JOIN templates t ON t.id = el.template_id
 		WHERE a.status = 'active'
-		  AND el.status IN ('queued')
+		  AND (t.id IS NULL OR t.status = 'active')
+		  AND (
+		    el.status = 'queued'
+		    OR (el.status = 'processing' AND el.updated_at < NOW() - INTERVAL '10 minutes')
+		  )
 		  AND (
 		    eq.last_attempted_at IS NULL
 		    OR eq.last_attempted_at < NOW() - (INTERVAL '20 seconds' * POWER(2, eq.attempts))
@@ -149,9 +157,11 @@ func (w *Worker) claimBatch(ctx context.Context) ([]EmailJob, error) {
 			j.Conf.SMTPName = confName.String
 		}
 
-		j.Conf.SMTPPassword, err = Decrypt(j.Conf.SMTPPassword)
-		if err != nil {
-			log.Printf("failed to decrypt SMTP password. \n%v", err)
+		decryptedPassword, decryptErr := Decrypt(j.Conf.SMTPPassword)
+		if decryptErr != nil {
+			j.DecryptErr = fmt.Errorf("failed to decrypt SMTP password: %w", decryptErr)
+		} else {
+			j.Conf.SMTPPassword = decryptedPassword
 		}
 
 		jobs = append(jobs, j)
@@ -190,6 +200,10 @@ func (w *Worker) claimBatch(ctx context.Context) ([]EmailJob, error) {
 
 func (w *Worker) processJob(ctx context.Context, job EmailJob) {
 	log.Printf("Send email initiated.")
+	if job.DecryptErr != nil {
+		w.handleFailure(ctx, job, job.DecryptErr)
+		return
+	}
 	err := SendEmail(&job.Conf, job.ToEmail, job.Subject, job.Body, job.Type, job.UUID)
 	if err != nil {
 		w.handleFailure(ctx, job, err)
@@ -251,8 +265,10 @@ func (w *Worker) handleFailure(ctx context.Context, job EmailJob, sendErr error)
 	}
 }
 
-// pqArray is a placeholder — use github.com/lib/pq.Array(ids) in real code
-// if you're on lib/pq, or pgx's equivalent if on pgx.
+// pqArray wraps a slice as a PostgreSQL array literal so it can be used with
+// ANY($1) in a prepared statement. The placeholder implementation that just
+// returned the []int64 caused "could not determine data type of parameter $1"
+// under prefer_simple_protocol and broke the worker's claimBatch update.
 func pqArray(ids []int64) interface{} {
-	return ids
+	return pq.Array(ids)
 }

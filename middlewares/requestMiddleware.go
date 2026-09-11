@@ -54,6 +54,17 @@ type ContextKey string
 
 const RequestIDKey ContextKey = "request_id"
 
+const maxRequestBodySize = 1 << 20
+
+func BodyLimit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

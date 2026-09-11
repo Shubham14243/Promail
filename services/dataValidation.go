@@ -208,9 +208,9 @@ func ValidateTemplateContent(req models.TemplateContent) error {
 }
 
 // APP CONFIG VALIDATION
-func ValidateAppConfigCreate(req models.AppConfigCreate) error {
+func ValidateAppConfigCreate(appID int64, req models.AppConfigCreate) error {
 
-	if req.AppID <= 0 {
+	if appID <= 0 {
 		return errors.New("Invalid app_id: must be a positive integer.")
 	}
 

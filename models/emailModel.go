@@ -68,9 +68,11 @@ type TrackingData struct {
 type EmailLogFilter struct {
 	AppID         *int64
 	TemplateID    *int64
-	ToEmail       string
-	StartDateTime string
-	EndDateTime   string
+	ToEmail       *string
+	StartDateTime *string
+	EndDateTime   *string
+	Limit         int64
+	Skip          int64
 }
 
 type ClickTracking struct {

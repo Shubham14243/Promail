@@ -149,16 +149,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.UserRepo == nil {
-		logdata.Message = "User repository unavailable"
-		logdata.Status = "Error"
-		logdata.ResponseCode = http.StatusInternalServerError
-		logdata.Error = "user repository is nil"
-		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
-		return
-	}
-
 	user, err := h.UserRepo.GetUserByEmail(req.Email)
 	if err != nil {
 		logdata.Message = "No User found with - " + req.Email
@@ -237,16 +227,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt: time.Now().Add(time.Duration(validityDays) * 24 * time.Hour),
 	}
 
-	if h.RefreshTokenRepo == nil {
-		logdata.Message = "Refresh token repository unavailable"
-		logdata.Status = "Error"
-		logdata.ResponseCode = http.StatusInternalServerError
-		logdata.Error = "refresh token repository is nil"
-		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
-		return
-	}
-
 	if err := h.RefreshTokenRepo.CreateRefreshToken(refToken); err != nil {
 		logdata.Message = "Refresh token creation failure"
 		logdata.Status = "Error"
@@ -321,9 +301,17 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "Invalid or expired refresh token.", logdata.RequestID)
 		return
 	}
+	if rt == nil {
+		logdata.Message = "Refresh token not found."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusUnauthorized
+		logdata.Error = "refresh token not found"
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "Invalid or expired refresh token.", logdata.RequestID)
+		return
+	}
 
 	userData, err := h.UserRepo.GetUserByID(int64(rt.UserID))
-	logdata.UserID = strconv.Itoa(int(userData.ID))
 	if err != nil {
 		logdata.Message = "User data fetch failure"
 		logdata.Status = "Error"
@@ -333,6 +321,16 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
 		return
 	}
+	if userData == nil {
+		logdata.Message = "User data fetch failure"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusUnauthorized
+		logdata.Error = "user not found"
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "Invalid or expired refresh token.", logdata.RequestID)
+		return
+	}
+	logdata.UserID = strconv.FormatInt(userData.ID, 10)
 
 	accessToken, err := services.GenerateAccessToken(rt.UserID, userData.Email)
 	if err != nil {
@@ -413,6 +411,15 @@ func (h *AuthHandler) AuthMe(w http.ResponseWriter, r *http.Request) {
 		logdata.Error = err.Error()
 		logger.Error(logdata)
 		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+	if userData == nil {
+		logdata.Message = "User not found"
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusUnauthorized
+		logdata.Error = "user not found"
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "User not found.", logdata.RequestID)
 		return
 	}
 

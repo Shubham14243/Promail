@@ -10,9 +10,19 @@ import (
 	"github.com/google/uuid"
 )
 
-var SecretKey = []byte(os.Getenv("TOKEN_SECRET"))
+func tokenSecret() ([]byte, error) {
+	secret := os.Getenv("TOKEN_SECRET")
+	if secret == "" {
+		return nil, errors.New("TOKEN_SECRET is not configured")
+	}
+	return []byte(secret), nil
+}
 
 func GenerateAccessToken(userID int64, email string) (string, error) {
+	secret, err := tokenSecret()
+	if err != nil {
+		return "", err
+	}
 
 	validityMins, err := strconv.Atoi(os.Getenv("TOKEN_VALIDITY_MINS"))
 	if err != nil {
@@ -28,7 +38,7 @@ func GenerateAccessToken(userID int64, email string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString(SecretKey)
+	return token.SignedString(secret)
 }
 
 func GenerateRefreshToken() string {
@@ -41,12 +51,17 @@ func GenerateRefreshToken() string {
 }
 
 func ValidateAccessToken(tokenString string) (jwt.MapClaims, error) {
+	secret, err := tokenSecret()
+	if err != nil {
+		return nil, err
+	}
 
 	token, err := jwt.Parse(
 		tokenString,
 		func(token *jwt.Token) (interface{}, error) {
-			return SecretKey, nil
+			return secret, nil
 		},
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 	)
 
 	if err != nil {

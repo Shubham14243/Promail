@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"promail/models"
 	"regexp"
@@ -133,6 +134,11 @@ func AddClickTrackingBody(body string) (string, []models.ClickTracking) {
 			originalURL = sub[2]
 		} else {
 			originalURL = sub[3]
+		}
+
+		parsedURL, err := url.Parse(originalURL)
+		if err != nil || parsedURL.Scheme != "" && parsedURL.Scheme != "http" && parsedURL.Scheme != "https" || parsedURL.Scheme == "" && parsedURL.Host != "" {
+			return match
 		}
 
 		token := uuid.New()

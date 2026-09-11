@@ -115,7 +115,7 @@ func Migrate() error {
 		CONSTRAINT fk_email_app
 			FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
 		CONSTRAINT fk_email_template
-			FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE SET NULL
+			FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE CASCADE
 	);
 
 	CREATE TABLE IF NOT EXISTS email_queue (
@@ -138,6 +138,11 @@ func Migrate() error {
 		CONSTRAINT fk_click_email
 			FOREIGN KEY (email_log_id) REFERENCES email_logs(id) ON DELETE CASCADE
 	);
+
+	ALTER TABLE email_logs DROP CONSTRAINT IF EXISTS fk_email_template;
+	ALTER TABLE email_logs
+		ADD CONSTRAINT fk_email_template
+		FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE SET NULL;
 	`
 
 	_, err := DB.Exec(query)

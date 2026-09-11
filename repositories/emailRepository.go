@@ -11,6 +11,10 @@ type EmailRepository struct {
 }
 
 func (r *EmailRepository) AddEmailLogAndQueue(emailLog models.EmailLogDataCreate) (models.LogResponse, error) {
+	return r.AddEmailLogAndQueueWithTracking(emailLog, false, nil)
+}
+
+func (r *EmailRepository) AddEmailLogAndQueueWithTracking(emailLog models.EmailLogDataCreate, addOpenTracking bool, clickTrackings []models.ClickTracking) (models.LogResponse, error) {
 
 	var logRes models.LogResponse
 
@@ -46,6 +50,24 @@ func (r *EmailRepository) AddEmailLogAndQueue(emailLog models.EmailLogDataCreate
 	`, logRes.LogID)
 	if err != nil {
 		return logRes, err
+	}
+
+	if addOpenTracking {
+		if _, err = tx.Exec(`
+			INSERT INTO email_analytics(email_log_id, type, tracking_token)
+			VALUES($1, $2, $3)
+		`, logRes.LogID, "open", logRes.AckID); err != nil {
+			return logRes, err
+		}
+	}
+
+	for _, tracking := range clickTrackings {
+		if _, err = tx.Exec(`
+			INSERT INTO email_analytics(email_log_id, type, original_url, tracking_token)
+			VALUES($1, $2, $3, $4)
+		`, logRes.LogID, "click", tracking.OriginalURL, tracking.Token); err != nil {
+			return logRes, err
+		}
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -102,7 +124,7 @@ func (r *EmailRepository) GetAnalyticsWithUUID(logUUID string) (*models.Tracking
 	return &trackData, nil
 }
 
-func (r *EmailRepository) GetLogWithUUID(logUUID string) (*models.EmailLogData, error) {
+func (r *EmailRepository) GetLogWithUUID(logUUID string, userID int64) (*models.EmailLogData, error) {
 	var logData models.EmailLogData
 
 	err := r.DB.QueryRow(`
@@ -122,8 +144,8 @@ func (r *EmailRepository) GetLogWithUUID(logUUID string) (*models.EmailLogData, 
 			created_at,
 			updated_at
 		FROM email_logs
-		WHERE uuid = $1
-	`, logUUID).Scan(
+		WHERE uuid = $1 AND user_id = $2
+	`, logUUID, userID).Scan(
 		&logData.ID,
 		&logData.LogUUID,
 		&logData.UserID,
@@ -227,25 +249,37 @@ func (r *EmailRepository) GetEmailLogs(userID int64, filter models.EmailLogFilte
 		arg++
 	}
 
-	if filter.ToEmail != "" {
+	if filter.ToEmail != nil {
 		query += fmt.Sprintf(" AND to_email ILIKE $%d", arg)
-		args = append(args, "%"+filter.ToEmail+"%")
+		args = append(args, "%"+*filter.ToEmail+"%")
 		arg++
 	}
 
-	if filter.StartDateTime != "" {
+	if filter.StartDateTime != nil {
 		query += fmt.Sprintf(" AND created_at >= $%d", arg)
-		args = append(args, filter.StartDateTime)
+		args = append(args, *filter.StartDateTime)
 		arg++
 	}
 
-	if filter.EndDateTime != "" {
+	if filter.EndDateTime != nil {
 		query += fmt.Sprintf(" AND created_at <= $%d", arg)
-		args = append(args, filter.EndDateTime)
+		args = append(args, *filter.EndDateTime)
 		arg++
 	}
 
 	query += " ORDER BY created_at DESC"
+
+	if filter.Limit > 0 {
+		query += fmt.Sprintf(" LIMIT $%d", arg)
+		args = append(args, filter.Limit)
+		arg++
+	}
+
+	if filter.Skip > 0 {
+		query += fmt.Sprintf(" OFFSET $%d", arg)
+		args = append(args, filter.Skip)
+		arg++
+	}
 
 	rows, err := r.DB.Query(query, args...)
 	if err != nil {

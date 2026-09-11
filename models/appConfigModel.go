@@ -7,7 +7,7 @@ type AppConfigData struct {
 	SMTPPort      int    `json:"smtp_port"`
 	SMTPName      string `json:"smtp_name"`
 	SMTPUsername  string `json:"smtp_username"`
-	SMTPPassword  string `json:"smtp_password"`
+	SMTPPassword  string `json:"-"`
 	OpenTrack     string `json:"open_track"`
 	ClickTrack    string `json:"click_track"`
 	AutoRetry     string `json:"auto_retry"`

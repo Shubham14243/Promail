@@ -59,6 +59,15 @@ func (h *EmailHandler) SendEmailTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	exists, err := h.AppConfigRepo.AppConfigExistsByAppID(int64(req.AppID), int64(userID))
+	if err != nil {
+		logdata.Message = "App config existence check failed."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
 	if !exists {
 		logdata.Message = "App config not found."
 		logdata.Status = "Failure"
@@ -66,6 +75,26 @@ func (h *EmailHandler) SendEmailTest(w http.ResponseWriter, r *http.Request) {
 		logdata.Error = ""
 		logger.Info(logdata)
 		services.ResponseWithMessage(w, http.StatusNotFound, nil, "App config not found.", logdata.RequestID)
+		return
+	}
+
+	app, err := h.AppRepo.GetUserAppSingle(int64(req.AppID), userID)
+	if err != nil {
+		logdata.Message = "App fetch failure."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+	if app == nil || app.Status != "active" {
+		logdata.Message = "App is inactive."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusForbidden
+		logdata.Error = ""
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusForbidden, nil, "App is inactive.", logdata.RequestID)
 		return
 	}
 
@@ -172,6 +201,15 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	logdata.ResourceID = strconv.Itoa(int(req.AppID))
 
 	exists, err := h.AppConfigRepo.AppConfigExistsByAppID(int64(req.AppID), int64(userID))
+	if err != nil {
+		logdata.Message = "App config existence check failed."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
 	if !exists {
 		logdata.Message = "App config not found."
 		logdata.Status = "Failure"
@@ -179,6 +217,26 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		logdata.Error = ""
 		logger.Info(logdata)
 		services.ResponseWithMessage(w, http.StatusNotFound, nil, "App config not found.", logdata.RequestID)
+		return
+	}
+
+	app, err := h.AppRepo.GetUserAppSingle(int64(req.AppID), userID)
+	if err != nil {
+		logdata.Message = "App fetch failure."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+	if app == nil || app.Status != "active" {
+		logdata.Message = "App is inactive."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusForbidden
+		logdata.Error = ""
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusForbidden, nil, "App is inactive.", logdata.RequestID)
 		return
 	}
 
@@ -237,6 +295,24 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
 		return
 	}
+	if template == nil {
+		logdata.Message = "Template not found."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = ""
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Template not found.", logdata.RequestID)
+		return
+	}
+	if template.Status != "active" {
+		logdata.Message = "Template is inactive."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusForbidden
+		logdata.Error = ""
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusForbidden, nil, "Template is inactive.", logdata.RequestID)
+		return
+	}
 
 	var varData []byte
 	varData, err = json.Marshal(req.Variables)
@@ -276,7 +352,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var logRes models.LogResponse
-	logRes, err = h.EmailRepo.AddEmailLogAndQueue(emailLog)
+	logRes, err = h.EmailRepo.AddEmailLogAndQueueWithTracking(emailLog, appConf.OpenTrack == "active", trackings)
 	if err != nil {
 		logdata.Message = "Email logging and queueing failed."
 		logdata.Status = "Error"
@@ -285,31 +361,6 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		logger.Error(logdata)
 		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Failed to log and queue Email.", logdata.RequestID)
 		return
-	}
-
-	if appConf.OpenTrack == "active" {
-		if err := h.EmailRepo.AddOpenTracking(logRes); err != nil {
-			logdata.Message = "Open tracking data insertion failed."
-			logdata.Status = "Failure"
-			logdata.ResponseCode = http.StatusBadRequest
-			logdata.Error = err.Error()
-			logger.Error(logdata)
-			services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Open tracking data insertion failed.", logdata.RequestID)
-			return
-		}
-	}
-
-	if appConf.ClickTrack == "active" {
-		err = h.EmailRepo.AddClickTracking(logRes.LogID, trackings)
-		if err != nil {
-			logdata.Message = "Click tracking creation failed."
-			logdata.Status = "Error"
-			logdata.ResponseCode = http.StatusInternalServerError
-			logdata.Error = err.Error()
-			logger.Error(logdata)
-			services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
-			return
-		}
 	}
 
 	logdata.Message = "Email accepted successful."
@@ -353,6 +404,10 @@ func (h *EmailHandler) OpenTrack(w http.ResponseWriter, r *http.Request) {
 		logdata.ResponseCode = http.StatusNotFound
 		logdata.Error = ""
 		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Open tracking record not found.", logdata.RequestID)
+		return
+	}
+	if trackData.Type != "open" {
 		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Open tracking record not found.", logdata.RequestID)
 		return
 	}
@@ -412,6 +467,10 @@ func (h *EmailHandler) ClickTrack(w http.ResponseWriter, r *http.Request) {
 		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Click tracking record not found.", logdata.RequestID)
 		return
 	}
+	if trackData.Type != "click" || trackData.Url == nil || *trackData.Url == "" {
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Click tracking record not found.", logdata.RequestID)
+		return
+	}
 
 	if trackData.ClickedAt == nil {
 		if err := h.EmailRepo.UpdateClickTracking(trackData.EmailLogID, tokenStr); err != nil {
@@ -449,7 +508,7 @@ func (h *EmailHandler) EmailLogUUID(w http.ResponseWriter, r *http.Request) {
 	}
 	logger.Info(logdata)
 
-	emailLog, err := h.EmailRepo.GetLogWithUUID(uuidStr)
+	emailLog, err := h.EmailRepo.GetLogWithUUID(uuidStr, userID)
 	if err != nil {
 		logdata.Message = "Email log fetch failure."
 		logdata.Status = "Error"
@@ -508,9 +567,27 @@ func (h *EmailHandler) EmailLogAll(w http.ResponseWriter, r *http.Request) {
 		filter.TemplateID = &id
 	}
 
-	filter.ToEmail = query.Get("to_email")
-	filter.StartDateTime = query.Get("startDateTime")
-	filter.EndDateTime = query.Get("endDateTime")
+	if ToEmail := query.Get("to_email"); ToEmail != "" {
+		filter.ToEmail = &ToEmail
+	}
+
+	if startDateTime := query.Get("startDateTime"); startDateTime != "" {
+		filter.StartDateTime = &startDateTime
+	}
+
+	if endDateTime := query.Get("endDateTime"); endDateTime != "" {
+		filter.EndDateTime = &endDateTime
+	}
+
+	if limit := query.Get("limit"); limit != "" {
+		l, _ := strconv.ParseInt(limit, 10, 64)
+		filter.Limit = l
+	}
+
+	if skip := query.Get("skip"); skip != "" {
+		s, _ := strconv.ParseInt(skip, 10, 64)
+		filter.Skip = s
+	}
 
 	emailLogs, err := h.EmailRepo.GetEmailLogs(userID, filter)
 	if err != nil {

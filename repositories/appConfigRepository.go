@@ -93,9 +93,15 @@ func (r *AppConfigRepository) CreateAppConfig(config models.AppConfigCreate) err
 	return err
 }
 
-func (r *AppConfigRepository) UpdateAppConfig(configID int64, config models.AppConfigUpdate) error {
+func (r *AppConfigRepository) UpdateAppConfig(appID int64, userID int64, config models.AppConfigUpdate) error {
 
-	_, err := r.DB.Exec(`UPDATE app_configs SET host=$1, port=$2, name=$3, username=$4, password=$5, open_track=$6, click_track=$7, auto_retry=$8, retry_max_count=$9 WHERE id=$10`, config.SMTPHost, config.SMTPPort, config.SMTPName, config.SMTPUsername, config.SMTPPassword, config.OpenTrack, config.ClickTrack, config.AutoRetry, config.RetryMaxCount, configID)
+	_, err := r.DB.Exec(`
+		UPDATE app_configs
+		SET host=$1, port=$2, name=$3, username=$4, password=$5,
+			open_track=$6, click_track=$7, auto_retry=$8, retry_max_count=$9
+		WHERE app_id=$10
+		  AND app_id IN (SELECT id FROM apps WHERE user_id=$11)
+	`, config.SMTPHost, config.SMTPPort, config.SMTPName, config.SMTPUsername, config.SMTPPassword, config.OpenTrack, config.ClickTrack, config.AutoRetry, config.RetryMaxCount, appID, userID)
 
 	return err
 }

@@ -68,7 +68,18 @@ func Auth(next http.Handler) http.Handler {
 			return
 		}
 
-		userID := int64(claims["user_id"].(float64))
+		userIDValue, ok := claims["user_id"].(float64)
+		if !ok || userIDValue <= 0 || userIDValue != float64(int64(userIDValue)) {
+			logdata.Message = "Authorization failure."
+			logdata.Status = "Failure"
+			logdata.ResponseCode = http.StatusUnauthorized
+			logdata.Error = "invalid user_id claim"
+			logger.Info(logdata)
+			services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "Invalid access token.", logdata.RequestID)
+			return
+		}
+
+		userID := int64(userIDValue)
 
 		ctx := context.WithValue(
 			r.Context(),

@@ -174,6 +174,15 @@ func (h *TemplateHandler) GetTemplateData(w http.ResponseWriter, r *http.Request
 	logger.Info(logdata)
 
 	exists, err := h.TempRepo.TemplateExistsByID(int64(templateID), userID)
+	if err != nil {
+		logdata.Message = "Template existence check failed."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
 	if !exists {
 		logdata.Message = "Template not found."
 		logdata.Status = "Failure"
@@ -245,6 +254,15 @@ func (h *TemplateHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request)
 	}
 
 	exists, err := h.TempRepo.TemplateExistsByID(int64(templateID), userID)
+	if err != nil {
+		logdata.Message = "Template existence check failed."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
 	if !exists {
 		logdata.Message = "Template not found."
 		logdata.Status = "Failure"
@@ -252,15 +270,6 @@ func (h *TemplateHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request)
 		logdata.Error = ""
 		logger.Info(logdata)
 		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Template not found.", logdata.RequestID)
-		return
-	}
-	if err != nil {
-		logdata.Message = "Template existence check failed."
-		logdata.Status = "Error"
-		logdata.ResponseCode = http.StatusInternalServerError
-		logdata.Error = err.Error()
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
 		return
 	}
 
@@ -330,6 +339,15 @@ func (h *TemplateHandler) UpdateContent(w http.ResponseWriter, r *http.Request) 
 	}
 
 	exists, err := h.TempRepo.TemplateExistsByID(int64(templateID), userID)
+	if err != nil {
+		logdata.Message = "Template existence check failed."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
 	if !exists {
 		logdata.Message = "Template not found."
 		logdata.Status = "Failure"
@@ -337,15 +355,6 @@ func (h *TemplateHandler) UpdateContent(w http.ResponseWriter, r *http.Request) 
 		logdata.Error = ""
 		logger.Info(logdata)
 		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Template not found.", logdata.RequestID)
-		return
-	}
-	if err != nil {
-		logdata.Message = "Template existence check failed."
-		logdata.Status = "Error"
-		logdata.ResponseCode = http.StatusInternalServerError
-		logdata.Error = err.Error()
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
 		return
 	}
 
@@ -391,15 +400,6 @@ func (h *TemplateHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request)
 	logger.Info(logdata)
 
 	exists, err := h.TempRepo.TemplateExistsByID(int64(templateID), userID)
-	if !exists {
-		logdata.Message = "Template not found."
-		logdata.Status = "Failure"
-		logdata.ResponseCode = http.StatusNotFound
-		logdata.Error = ""
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Template not found.", logdata.RequestID)
-		return
-	}
 	if err != nil {
 		logdata.Message = "Template existence check failed."
 		logdata.Status = "Error"
@@ -407,6 +407,15 @@ func (h *TemplateHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request)
 		logdata.Error = err.Error()
 		logger.Info(logdata)
 		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+	if !exists {
+		logdata.Message = "Template not found."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = ""
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Template not found.", logdata.RequestID)
 		return
 	}
 

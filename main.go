@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"promail/configs"
@@ -62,8 +64,9 @@ func main() {
 	log.Println("Migration completed")
 	logger.Init()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	defer configs.DB.Close()
 
 	emailWorker := services.NewWorker(configs.DB)
 	go emailWorker.Run(ctx)
@@ -124,11 +127,35 @@ func main() {
 
 	log.Println("Starting server on", addr)
 
-	routeHandler := middlewares.CORS(middlewares.RequestID(mux))
+	rateLimiter := middlewares.NewRateLimiterFromEnv()
+	routeHandler := middlewares.BodyLimit(middlewares.CORS(middlewares.RequestID(rateLimiter.Middleware(mux))))
 
-	err := http.ListenAndServe(addr, routeHandler)
-	if err != nil {
-		log.Fatal(err)
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           routeHandler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- server.ListenAndServe()
+	}()
+
+	select {
+	case err := <-serverErr:
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	case <-ctx.Done():
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer shutdownCancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("server shutdown failed: %v", err)
+		}
+		<-serverErr
 	}
 
 }
