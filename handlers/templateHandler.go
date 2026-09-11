@@ -114,7 +114,7 @@ func (h *TemplateHandler) GetAppTemplates(w http.ResponseWriter, r *http.Request
 
 	query := r.URL.Query()
 
-	limit := 10
+	limit := 20
 	if l := query.Get("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil && v > 0 {
 			limit = v

@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -572,21 +574,35 @@ func (h *EmailHandler) EmailLogAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if startDateTime := query.Get("startDateTime"); startDateTime != "" {
-		filter.StartDateTime = &startDateTime
+		parsed, err := normalizeLogDateTime(startDateTime)
+		if err != nil {
+			services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid startDateTime. Use YYYY-MM-DDTHH:MM or RFC3339.", logdata.RequestID)
+			return
+		}
+		filter.StartDateTime = &parsed
 	}
 
 	if endDateTime := query.Get("endDateTime"); endDateTime != "" {
-		filter.EndDateTime = &endDateTime
+		parsed, err := normalizeLogDateTime(endDateTime)
+		if err != nil {
+			services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid endDateTime. Use YYYY-MM-DDTHH:MM or RFC3339.", logdata.RequestID)
+			return
+		}
+		filter.EndDateTime = &parsed
 	}
 
 	if limit := query.Get("limit"); limit != "" {
 		l, _ := strconv.ParseInt(limit, 10, 64)
 		filter.Limit = l
+	} else {
+		filter.Limit = 20
 	}
 
 	if skip := query.Get("skip"); skip != "" {
 		s, _ := strconv.ParseInt(skip, 10, 64)
 		filter.Skip = s
+	} else {
+		filter.Skip = 0
 	}
 
 	emailLogs, err := h.EmailRepo.GetEmailLogs(userID, filter)
@@ -616,4 +632,17 @@ func (h *EmailHandler) EmailLogAll(w http.ResponseWriter, r *http.Request) {
 	logdata.Error = ""
 	logger.Info(logdata)
 	services.ResponseWithData(w, http.StatusOK, nil, "Email log fetch Successful.", emailLogs, logdata.RequestID)
+}
+
+func normalizeLogDateTime(value string) (string, error) {
+	layouts := []string{time.RFC3339Nano, "2006-01-02T15:04", "2006-01-02T15:04:05"}
+
+	for _, layout := range layouts {
+		parsed, err := time.ParseInLocation(layout, value, time.UTC)
+		if err == nil {
+			return parsed.UTC().Format(time.RFC3339Nano), nil
+		}
+	}
+
+	return "", errors.New("invalid log date-time")
 }
