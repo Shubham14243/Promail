@@ -156,7 +156,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		logdata.ResponseCode = http.StatusNotFound
 		logdata.Error = err.Error()
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email or passowrd.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email or password.", logdata.RequestID)
 		return
 	}
 
@@ -166,7 +166,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		logdata.ResponseCode = http.StatusNotFound
 		logdata.Error = "user not found"
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email or passowrd.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email or password.", logdata.RequestID)
 		return
 	}
 
@@ -178,7 +178,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		logdata.ResponseCode = http.StatusBadRequest
 		logdata.Error = err.Error()
 		logger.Error(logdata)
-		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email or passowrd.", logdata.RequestID)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid email or password.", logdata.RequestID)
 		return
 	}
 
@@ -438,4 +438,186 @@ func (h *AuthHandler) AuthMe(w http.ResponseWriter, r *http.Request) {
 	logdata.Error = ""
 	logger.Info(logdata)
 	services.ResponseWithData(w, http.StatusOK, nil, "User found successfully.", meRes, logdata.RequestID)
+}
+
+func (h *AuthHandler) InitResetPassword(w http.ResponseWriter, r *http.Request) {
+
+	logdata := models.LogData{
+		RequestID: r.Context().Value(middlewares.RequestIDKey).(string),
+		Endpoint:  r.RequestURI,
+		Method:    r.Method,
+		Operation: "Reset Password Initiation",
+		Status:    "Init",
+		UserID:    "",
+		Message:   "Reset password initiated.",
+	}
+	logger.Info(logdata)
+
+	var req models.ResetPasswordRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logdata.Message = "Request body parsing failed."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusBadRequest
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'email' is required.", logdata.RequestID)
+		return
+	}
+
+	if err := services.ValidateResetPasswordRequest(req); err != nil {
+		logdata.Message = "Request body validation failed."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusBadRequest
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, err.Error(), logdata.RequestID)
+		return
+	}
+
+	user, err := h.UserRepo.GetUserByEmail(req.Email)
+	if err != nil {
+		logdata.Message = "No User found with - " + req.Email
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email", logdata.RequestID)
+		return
+	}
+
+	if user == nil {
+		logdata.Message = "No User found with - " + req.Email
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = "user not found"
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Invalid email", logdata.RequestID)
+		return
+	}
+
+	logdata.UserID = strconv.Itoa(int(user.ID))
+
+	newToken := uuid.NewString()
+
+	passResetData := models.PasswordResetToken{
+		UserID:        user.ID,
+		PasswordToken: newToken,
+		ExpiresAt:     time.Now().Add(15 * time.Minute),
+	}
+
+	if err := h.RefreshTokenRepo.CreatePasswordResetToken(passResetData); err != nil {
+		logdata.Message = "Reset password token creation failure"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
+	resetURL := os.Getenv("UI_URL") + "/setnew/" + newToken
+
+	if err := services.SendResetEmail(req.Email, resetURL); err != nil {
+		logdata.Message = "Reset password token email delivery failed"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
+	logdata.Message = "Reset password successful."
+	logdata.Status = "Success"
+	logdata.ResponseCode = http.StatusOK
+	logdata.Error = ""
+	logger.Info(logdata)
+	services.ResponseWithMessage(w, http.StatusOK, nil, "Password reset successful.", logdata.RequestID)
+}
+
+func (h *AuthHandler) SetNewPassword(w http.ResponseWriter, r *http.Request) {
+
+	logdata := models.LogData{
+		RequestID: r.Context().Value(middlewares.RequestIDKey).(string),
+		Endpoint:  r.RequestURI,
+		Method:    r.Method,
+		Operation: "Set New Password Initiation",
+		Status:    "Init",
+		UserID:    "",
+		Message:   "Set new password initiated.",
+	}
+	logger.Info(logdata)
+
+	var req models.SetNewPassword
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logdata.Message = "Request body parsing failed."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusBadRequest
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "Invalid request body. 'password_token' and 'new_password' are required.", logdata.RequestID)
+		return
+	}
+
+	if err := services.ValidateSetNewPassword(req); err != nil {
+		logdata.Message = "Request body validation failed."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusBadRequest
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusBadRequest, nil, err.Error(), logdata.RequestID)
+		return
+	}
+
+	userID, err := h.RefreshTokenRepo.GetPasswordUserByToken(req.PasswordToken)
+	if err != nil {
+		logdata.Message = "No User found with password token."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Password reset is invalid or expired.", logdata.RequestID)
+		return
+	}
+	if userID == 0 {
+		logdata.Message = "No User found with password token."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusNotFound
+		logdata.Error = "user not found"
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusNotFound, nil, "Password reset is invalid or expired.", logdata.RequestID)
+		return
+	}
+
+	logdata.UserID = strconv.Itoa(int(userID))
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		logdata.Message = "Password hashing failure"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
+	if err := h.UserRepo.UpdateUserPassword(userID, string(hashedPassword)); err != nil {
+		logdata.Message = "User password updation failed"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
+	logdata.Message = "User Password Reset successful."
+	logdata.Status = "Success"
+	logdata.ResponseCode = http.StatusOK
+	logdata.Error = ""
+	logger.Info(logdata)
+	services.ResponseWithMessage(w, http.StatusOK, nil, "User Password Reset successful.", logdata.RequestID)
 }

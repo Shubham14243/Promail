@@ -6,8 +6,22 @@ import (
 )
 
 type APIResponse struct {
+	Status  string      `json:"status"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
+}
+
+func responseStatus(statusCode int) string {
+	switch {
+	case statusCode == http.StatusAccepted:
+		return "accepted"
+	case statusCode >= http.StatusBadRequest && statusCode < http.StatusInternalServerError:
+		return "failed"
+	case statusCode >= http.StatusInternalServerError:
+		return "error"
+	default:
+		return "success"
+	}
 }
 
 func ResponseWithMessage(w http.ResponseWriter, statusCode int, headers map[string]string, message string, requestID string) {
@@ -23,6 +37,7 @@ func ResponseWithMessage(w http.ResponseWriter, statusCode int, headers map[stri
 	w.WriteHeader(statusCode)
 
 	json.NewEncoder(w).Encode(APIResponse{
+		Status:  responseStatus(statusCode),
 		Message: message,
 	})
 }
@@ -40,6 +55,7 @@ func ResponseWithData(w http.ResponseWriter, statusCode int, headers map[string]
 	w.WriteHeader(statusCode)
 
 	json.NewEncoder(w).Encode(APIResponse{
+		Status:  responseStatus(statusCode),
 		Message: message,
 		Data:    data,
 	})

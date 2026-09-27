@@ -9,6 +9,7 @@ import (
 	"os"
 	"promail/models"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -155,4 +156,194 @@ func AddClickTrackingBody(body string) (string, []models.ClickTracking) {
 	})
 
 	return updated, trackings
+}
+
+func SendResetEmail(to string, resetURL string) error {
+
+	port, err := strconv.Atoi(os.Getenv("RESET_PORT"))
+	if err != nil {
+		port = 587 // default
+	}
+
+	fakeConfig := models.AppConfigData{
+		ID:            0,
+		AppID:         0,
+		SMTPHost:      os.Getenv("RESET_HOST"),
+		SMTPPort:      port,
+		SMTPName:      "ProMail",
+		SMTPUsername:  os.Getenv("RESET_EMAIL"),
+		SMTPPassword:  os.Getenv("RESET_PASSWORD"),
+		OpenTrack:     "",
+		ClickTrack:    "",
+		AutoRetry:     "",
+		RetryMaxCount: 0,
+		CreatedAt:     "",
+		UpdatedAt:     "",
+	}
+
+	fmt.Print(resetURL)
+
+	Subject := "ProMail | Reset Your Password!"
+	EmailType := "HTML"
+	body := `
+		<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset your password</title>
+</head>
+
+<body style="
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111111;
+">
+<div></div>
+    <table
+        role="presentation"
+        width="100%"
+        cellspacing="0"
+        cellpadding="0"
+        border="0"
+        style="background-color: #ffffff;"
+    >
+        <tr>
+            <td align="center" style="padding: 18px 20px;">
+
+                <!-- Main Card -->
+                <table
+                    role="presentation"
+                    width="100%"
+                    cellspacing="0"
+                    cellpadding="0"
+                    border="0"
+                    style="
+                        max-width: 640px;
+                        border: 1px solid #dddddd;
+                        border-radius: 22px;
+                        background-color: #ffffff;
+                    "
+                >
+                    <tr>
+                        <td style="padding: 38px 40px 36px 40px;">
+
+                            <!-- Heading -->
+                            <h1 style="
+                                margin: 0 0 14px 0;
+                                font-size: 22px;
+                                line-height: 30px;
+                                font-weight: 600;
+                                color: #080808;
+                            ">
+                                Reset your password
+                            </h1>
+
+                            <!-- Description -->
+                            <p style="
+                                margin: 0 0 24px 0;
+                                font-size: 16px;
+                                line-height: 24px;
+                                color: #111111;
+                            ">
+                                We received a request to reset the password for your account.
+                            </p>
+
+                            <!-- Button -->
+                            <table
+                                role="presentation"
+                                cellspacing="0"
+                                cellpadding="0"
+                                border="0"
+                            >
+                                <tr>
+                                    <td
+                                        style="
+                                            border-radius: 6px;
+                                            background-color: #000000;
+                                        "
+                                    >
+                                        <a
+                                            href="{{RESET_URL}}"
+                                            target="_blank"
+                                            style="
+                                                display: inline-block;
+                                                padding: 9px 14px;
+                                                font-size: 14px;
+                                                line-height: 18px;
+                                                font-weight: 600;
+                                                color: #ffffff;
+                                                text-decoration: none;
+                                                border-radius: 6px;
+                                            "
+                                        >
+                                            Reset password
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Divider -->
+                            <table
+                                role="presentation"
+                                width="100%"
+                                cellspacing="0"
+                                cellpadding="0"
+                                border="0"
+                                style="margin-top: 32px;"
+                            >
+                                <tr>
+                                    <td style="
+                                        border-top: 1px solid #dddddd;
+                                        font-size: 0;
+                                        line-height: 0;
+                                    ">
+                                        &nbsp;
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Expiry -->
+                            <p style="
+                                margin: 30px 0 10px 0;
+                                font-size: 13px;
+                                line-height: 20px;
+                                color: #666666;
+                            ">
+                                This link expires in 15 minutes.
+                            </p>
+
+                            <!-- Security Notice -->
+                            <p style="
+                                margin: 0;
+                                font-size: 13px;
+                                line-height: 20px;
+                                color: #666666;
+                            ">
+                                If you didn’t request to reset your password, you can safely
+                                ignore this email. Someone else might have typed your email
+                                address by mistake.
+                            </p>
+
+                        </td>
+                    </tr>
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>`
+	body = strings.ReplaceAll(body, "{{RESET_URL}}", resetURL)
+	IdemKey := uuid.NewString()
+
+	if err := SendEmail(&fakeConfig, to, Subject, body, EmailType, IdemKey); err != nil {
+		return err
+	}
+
+	return nil
+
 }

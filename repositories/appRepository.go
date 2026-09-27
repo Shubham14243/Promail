@@ -106,6 +106,17 @@ func (r *AppRepository) GetUserAppKey(appID int64, userID int64) (*models.AppMai
 	return &app, nil
 }
 
+func (r *AppRepository) GetAppByMailKey(mailKey string) (appID int64, userID int64, status string, err error) {
+	err = r.DB.QueryRow(
+		`SELECT id, user_id, status FROM apps WHERE mail_key = $1`,
+		mailKey,
+	).Scan(&appID, &userID, &status)
+	if err == sql.ErrNoRows {
+		return 0, 0, "", nil
+	}
+	return appID, userID, status, err
+}
+
 func (r *AppRepository) CreateApp(app models.CreateApp) error {
 
 	_, err := r.DB.Exec(`INSERT INTO apps(user_id, name, description, mail_Key, status) values($1, $2, $3, $4, $5)`, app.UserId, app.Name, app.Description, app.MailKey, app.Status)

@@ -15,4 +15,7 @@ func AuthRoutes(mux *http.ServeMux, h *handlers.AuthHandler) {
 	mux.HandleFunc("POST /api/v1/auth/refresh", h.RefreshToken)
 	mux.Handle("POST /api/v1/auth/logout", middlewares.Auth(http.HandlerFunc(h.Logout)))
 
+	mux.HandleFunc("POST /api/v1/auth/reset", h.InitResetPassword)
+	mux.HandleFunc("POST /api/v1/auth/setnew", h.SetNewPassword)
+
 }

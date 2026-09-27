@@ -20,10 +20,11 @@ func Migrate() error {
 	);
 
 	CREATE TABLE IF NOT EXISTS refresh_tokens (
-		id SERIAL PRIMARY KEY,
 		user_id BIGINT NOT NULL UNIQUE,
-		token TEXT NOT NULL UNIQUE,
-		expires_at TIMESTAMPTZ NOT NULL,
+		token TEXT,
+		password_token TEXT,
+		password_expires_at TIMESTAMPTZ,
+		expires_at TIMESTAMPTZ,
 		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
 		CONSTRAINT fk_user
@@ -147,6 +148,39 @@ func Migrate() error {
 	ALTER TABLE email_logs
 		ADD CONSTRAINT fk_email_template
 		FOREIGN KEY (template_id) REFERENCES templates(id) ON DELETE SET NULL;
+
+	CREATE OR REPLACE FUNCTION set_updated_at()
+	RETURNS TRIGGER AS $$
+	BEGIN
+		NEW.updated_at = NOW();
+		RETURN NEW;
+	END;
+	$$ LANGUAGE plpgsql;
+
+	DROP TRIGGER IF EXISTS users_set_updated_at ON users;
+	CREATE TRIGGER users_set_updated_at
+		BEFORE UPDATE ON users
+		FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+	DROP TRIGGER IF EXISTS apps_set_updated_at ON apps;
+	CREATE TRIGGER apps_set_updated_at
+		BEFORE UPDATE ON apps
+		FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+	DROP TRIGGER IF EXISTS templates_set_updated_at ON templates;
+	CREATE TRIGGER templates_set_updated_at
+		BEFORE UPDATE ON templates
+		FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+	DROP TRIGGER IF EXISTS app_configs_set_updated_at ON app_configs;
+	CREATE TRIGGER app_configs_set_updated_at
+		BEFORE UPDATE ON app_configs
+		FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+	DROP TRIGGER IF EXISTS email_logs_set_updated_at ON email_logs;
+	CREATE TRIGGER email_logs_set_updated_at
+		BEFORE UPDATE ON email_logs
+		FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 	`
 
 	_, err := DB.Exec(query)

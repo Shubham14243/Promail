@@ -165,16 +165,12 @@ func (h *EmailHandler) SendEmailTest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
-
-	userID := r.Context().Value(middlewares.UserIDKey).(int64)
-
 	logdata := models.LogData{
 		RequestID: r.Context().Value(middlewares.RequestIDKey).(string),
 		Endpoint:  r.RequestURI,
 		Method:    r.Method,
 		Operation: "Email Send Request",
 		Status:    "Init",
-		UserID:    strconv.FormatInt(userID, 10),
 		Message:   "Email sending initiated.",
 	}
 	logger.Info(logdata)
@@ -202,7 +198,38 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 	}
 	logdata.ResourceID = strconv.Itoa(int(req.AppID))
 
-	exists, err := h.AppConfigRepo.AppConfigExistsByAppID(int64(req.AppID), int64(userID))
+	appID, userID, appStatus, err := h.AppRepo.GetAppByMailKey(req.MailKey)
+	if err != nil {
+		logdata.Message = "App lookup by mail key failed."
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+	if appID == 0 || appID != req.AppID {
+		logdata.Message = "Invalid mail_key provided."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusUnauthorized
+		logdata.Error = "mail_key does not match app"
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "Invalid or expired mail_key provided.", logdata.RequestID)
+		return
+	}
+	logdata.UserID = strconv.FormatInt(userID, 10)
+
+	if appStatus != "active" {
+		logdata.Message = "App is inactive."
+		logdata.Status = "Failure"
+		logdata.ResponseCode = http.StatusForbidden
+		logdata.Error = ""
+		logger.Info(logdata)
+		services.ResponseWithMessage(w, http.StatusForbidden, nil, "App is inactive.", logdata.RequestID)
+		return
+	}
+
+	exists, err := h.AppConfigRepo.AppConfigExistsByAppID(req.AppID, userID)
 	if err != nil {
 		logdata.Message = "App config existence check failed."
 		logdata.Status = "Error"
@@ -222,7 +249,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app, err := h.AppRepo.GetUserAppSingle(int64(req.AppID), userID)
+	app, err := h.AppRepo.GetUserAppSingle(req.AppID, userID)
 	if err != nil {
 		logdata.Message = "App fetch failure."
 		logdata.Status = "Error"
@@ -242,7 +269,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appConf, err := h.AppConfigRepo.GetAppConfigs(int64(req.AppID), userID)
+	appConf, err := h.AppConfigRepo.GetAppConfigs(req.AppID, userID)
 	if err != nil {
 		logdata.Message = "No app config data found."
 		logdata.Status = "Failure"
@@ -266,28 +293,7 @@ func (h *EmailHandler) SendEmail(w http.ResponseWriter, r *http.Request) {
 
 	appConf.SMTPPassword = decrypted_password
 
-	app_mailkey, err := h.AppRepo.GetUserAppKey(int64(req.AppID), userID)
-	if err != nil {
-		logdata.Message = "User app key not found."
-		logdata.Status = "Failure"
-		logdata.ResponseCode = http.StatusBadRequest
-		logdata.Error = err.Error()
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusBadRequest, nil, "User app key not found.", logdata.RequestID)
-		return
-	}
-
-	if app_mailkey.MailKey.String() != req.MailKey {
-		logdata.Message = "Invalid mail_key provided."
-		logdata.Status = "Failure"
-		logdata.ResponseCode = http.StatusUnauthorized
-		logdata.Error = ""
-		logger.Info(logdata)
-		services.ResponseWithMessage(w, http.StatusUnauthorized, nil, "Invalid or expired mail_key provided.", logdata.RequestID)
-		return
-	}
-
-	template, err := h.TempRepo.GetAppTemplateBySlug(req.TemplateSlug, int64(userID))
+	template, err := h.TempRepo.GetAppTemplateBySlug(req.TemplateSlug, userID)
 	if err != nil {
 		logdata.Message = "Template fetch failure."
 		logdata.Status = "Error"

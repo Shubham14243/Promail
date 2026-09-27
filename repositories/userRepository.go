@@ -25,6 +25,22 @@ func (r *UserRepository) GetUserByID(id int64) (*models.User, error) {
 
 }
 
+func (r *UserRepository) GetUserPasswordByID(id int64) (*models.UserPassword, error) {
+
+	var user models.UserPassword
+
+	err := r.DB.QueryRow(`SELECT id, password_hash FROM users where id=$1`, id).Scan(&user.UserID, &user.PasswordHash)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &user, nil
+
+}
+
 func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 
 	var user models.User
@@ -82,6 +98,20 @@ func (r *UserRepository) UpdateUser(id int64, user models.UserUpdateRequest) err
 	`,
 		user.Name,
 		user.Email,
+		id,
+	)
+
+	return err
+}
+
+func (r *UserRepository) UpdateUserPassword(id int64, passwordHash string) error {
+
+	_, err := r.DB.Exec(`
+		UPDATE users
+		SET password_hash=$1
+		WHERE id=$2
+	`,
+		passwordHash,
 		id,
 	)
 

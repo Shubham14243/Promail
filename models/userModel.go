@@ -51,3 +51,13 @@ type UserUpdateRequest struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 }
+
+type UserPasswordUpdateRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+type UserPassword struct {
+	UserID       int64  `json:"user_id"`
+	PasswordHash string `json:"password_hash"`
+}

@@ -250,7 +250,7 @@ func (r *EmailRepository) GetEmailLogs(userID int64, filter models.EmailLogFilte
 	}
 
 	if filter.ToEmail != nil {
-		query += fmt.Sprintf(" AND to_email ILIKE $%d", arg)
+		query += fmt.Sprintf(" AND (to_email ILIKE $%d OR uuid::text ILIKE $%d)", arg, arg)
 		args = append(args, "%"+*filter.ToEmail+"%")
 		arg++
 	}

@@ -321,3 +321,34 @@ func ValidateEmailData(req models.EmailSend) error {
 
 	return nil
 }
+
+func ValidateUserPasswordUpdate(req models.UserPasswordUpdateRequest) error {
+
+	if !IsValidPassword(req.CurrentPassword) {
+		return errors.New("Invalid current password: must be 8-25 chars with uppercase, lowercase and number.")
+	}
+
+	if !IsValidPassword(req.NewPassword) {
+		return errors.New("Invalid new password: must be 8-25 chars with uppercase, lowercase and number.")
+	}
+
+	return nil
+}
+
+func ValidateResetPasswordRequest(req models.ResetPasswordRequest) error {
+
+	if !IsValidEmail(req.Email) {
+		return errors.New("Invalid email.")
+	}
+
+	return nil
+}
+
+func ValidateSetNewPassword(req models.SetNewPassword) error {
+
+	if !IsValidPassword(req.NewPassword) {
+		return errors.New("Invalid new password: must be 8-25 chars with uppercase, lowercase and number.")
+	}
+
+	return nil
+}
