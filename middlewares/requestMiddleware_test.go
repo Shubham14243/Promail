@@ -24,6 +24,15 @@ func TestCORS(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", rec.Code)
 	}
+
+	t.Setenv("UI_URL", "https://app.example.com")
+	configuredOriginRec := httptest.NewRecorder()
+	configuredOriginReq := httptest.NewRequest(http.MethodGet, "/", nil)
+	configuredOriginReq.Header.Set("Origin", "https://app.example.com")
+	CORS(next).ServeHTTP(configuredOriginRec, configuredOriginReq)
+	if got := configuredOriginRec.Header().Get("Access-Control-Allow-Origin"); got != "https://app.example.com" {
+		t.Fatalf("expected configured UI origin to be allowed, got %q", got)
+	}
 }
 
 func TestCORSOptions(t *testing.T) {

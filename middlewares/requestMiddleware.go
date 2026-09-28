@@ -3,6 +3,7 @@ package middlewares
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -45,6 +46,11 @@ func isAllowedOrigin(origin string) bool {
 		if strings.EqualFold(origin, allowed) {
 			return true
 		}
+	}
+
+	uiURL := strings.TrimRight(os.Getenv("UI_URL"), "/")
+	if uiURL != "" && strings.EqualFold(origin, uiURL) {
+		return true
 	}
 
 	return false
