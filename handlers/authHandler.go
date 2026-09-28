@@ -106,6 +106,16 @@ func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := services.SendSignUpEmail(req.Email, user.Name); err != nil {
+		logdata.Message = "signup email delivery failed"
+		logdata.Status = "Error"
+		logdata.ResponseCode = http.StatusInternalServerError
+		logdata.Error = err.Error()
+		logger.Error(logdata)
+		services.ResponseWithMessage(w, http.StatusInternalServerError, nil, "Something went wrong.", logdata.RequestID)
+		return
+	}
+
 	logdata.Message = "User creation successful."
 	logdata.Status = "Success"
 	logdata.ResponseCode = http.StatusCreated
