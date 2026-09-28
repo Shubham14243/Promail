@@ -113,7 +113,7 @@ func AddOpenTrackingBody(body string, openUUID string, tempType string) string {
 	if tempType == "text" {
 		body += openStr
 	} else {
-		openStr = "<img src='" + baseUrl + "/api/v1/email/track/open/" + openUUID + "' style='border:0;width:1px;height:1px;" + "</body>"
+		openStr = "<img src='" + baseUrl + "/api/v1/email/track/open/" + openUUID + "' style='border:0;width:1px;height:1px;'/>" + "</body>"
 		body = strings.ReplaceAll(body, "</body>", openStr)
 	}
 
