@@ -108,12 +108,12 @@ func PrepareEmailBody(body string, variables map[string]string) string {
 func AddOpenTrackingBody(body string, openUUID string, tempType string) string {
 
 	baseUrl := os.Getenv("APP_BASE_URL")
-	openStr := "<img src='" + baseUrl + "/api/v1/email/track/open/" + openUUID + "' style='display:none!important;max-width:1px;max-height:1px;'/>"
+	openStr := "<img src='" + baseUrl + "/api/v1/email/track/open/" + openUUID + "' style='border:0;width:1px;height:1px;'/>"
 
 	if tempType == "text" {
 		body += openStr
 	} else {
-		openStr = "<img src='" + baseUrl + "/api/v1/email/track/open/" + openUUID + "' style='display:none!important;max-width:1px;max-height:1px;'/>" + "</body>"
+		openStr = "<img src='" + baseUrl + "/api/v1/email/track/open/" + openUUID + "' style='border:0;width:1px;height:1px;" + "</body>"
 		body = strings.ReplaceAll(body, "</body>", openStr)
 	}
 
